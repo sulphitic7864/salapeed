@@ -1,0 +1,6 @@
+{
+  "name": "Salapeed - Custom Print Hoodie App",
+  "description": "Mobile-first custom print hoodie design and ordering app in Bahrain with real-time multi-print placement on front, back, and sleeves, size chart, graphics library, and admin portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
