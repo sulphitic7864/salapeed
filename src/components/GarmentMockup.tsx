@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { GarmentSide, PlantedElement, PrintZone } from '../types';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
+import { GarmentSide, PlantedElement, PrintZone, Product, GraphicItem } from '../types';
+import { getHoodiePhoto, PRINT_ZONES } from '../data/mockData';
 import {
   RotateCcw,
   Maximize2,
@@ -9,6 +9,7 @@ import {
   UploadCloud,
   Move,
   Layers,
+  Sparkles,
 } from 'lucide-react';
 
 interface GarmentMockupProps {
@@ -18,12 +19,14 @@ interface GarmentMockupProps {
   activeZone: PrintZone;
   elements: PlantedElement[];
   selectedElementId: string | null;
+  product?: Product;
   onSelectElement: (id: string) => void;
   onUpdateElementPosition: (id: string, x: number, y: number) => void;
   onUpdateElementScale?: (id: string, scale: number) => void;
   onUpdateElementRotation?: (id: string, rotation: number) => void;
   onDeleteElement?: (id: string) => void;
   onDropUpload?: (imageUrl: string, fileName: string, isLowRes: boolean) => void;
+  onDropGraphic?: (graphic: GraphicItem, x: number, y: number) => void;
   readOnly?: boolean;
 }
 
@@ -36,12 +39,14 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
   activeZone,
   elements,
   selectedElementId,
+  product,
   onSelectElement,
   onUpdateElementPosition,
   onUpdateElementScale,
   onUpdateElementRotation,
   onDeleteElement,
   onDropUpload,
+  onDropGraphic,
   readOnly = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,30 +59,25 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
   const [showSnapGuideY, setShowSnapGuideY] = useState(false);
   const [activeDragCoords, setActiveDragCoords] = useState<{ x: number; y: number } | null>(null);
 
-  // Drag interaction refs
-  const dragContextRef = useRef<{
-    mode: DragMode;
-    elemId: string;
-    startX: number;
-    startY: number;
-    elemStartX: number;
-    elemStartY: number;
-    initialScale: number;
-    initialRotation: number;
-    initialDistance: number;
-    elementCenterClient: { x: number; y: number };
-  }>({
-    mode: null,
-    elemId: '',
-    startX: 0,
-    startY: 0,
-    elemStartX: 50,
-    elemStartY: 50,
-    initialScale: 1.0,
-    initialRotation: 0,
-    initialDistance: 100,
-    elementCenterClient: { x: 0, y: 0 },
-  });
+  // Get real hoodie photo URL
+  const hoodiePhotoUrl = getHoodiePhoto(imageType, colorName, side, product);
+
+  // Keyboard delete support for selected element
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (readOnly || !selectedElementId || !onDeleteElement) return;
+      const tag = (document.activeElement?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        onDeleteElement(selectedElementId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElementId, onDeleteElement, readOnly]);
 
   // Curved text renderer
   const renderCurvedText = (text: string, font: string, color: string, curve: boolean) => {
@@ -94,7 +94,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                 : 'var(--font-body)',
             color,
           }}
-          className="text-base sm:text-lg font-black tracking-wider uppercase drop-shadow select-none"
+          className="text-sm sm:text-base font-black tracking-wider uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
         >
           {text || 'SALAPEED'}
         </span>
@@ -122,7 +122,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                 transform: `translateY(${ty}px) rotate(${rot}deg)`,
                 display: 'inline-block',
               }}
-              className="text-base sm:text-lg font-black tracking-wide uppercase drop-shadow select-none"
+              className="text-sm sm:text-base font-black tracking-wide uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
             >
               {ch === ' ' ? '\u00A0' : ch}
             </span>
@@ -132,7 +132,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     );
   };
 
-  // Helper to get element client center coordinates
+  // Helper to compute element center in client coordinates
   const getElementClientCenter = (elem: PlantedElement) => {
     if (!printZoneRef.current) return { x: 0, y: 0 };
     const rect = printZoneRef.current.getBoundingClientRect();
@@ -141,104 +141,34 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     return { x: cx, y: cy };
   };
 
-  // 1. Start Moving Element
+  // =========================================================================
+  // 1. DRAG TO MOVE ELEMENT (Rock-solid with window event listeners)
+  // =========================================================================
   const handlePointerDownMove = (e: React.PointerEvent, elem: PlantedElement) => {
     if (readOnly) return;
     e.stopPropagation();
+    e.preventDefault();
     onSelectElement(elem.id);
 
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
-
-    const center = getElementClientCenter(elem);
-
-    dragContextRef.current = {
-      mode: 'move',
-      elemId: elem.id,
-      startX: e.clientX,
-      startY: e.clientY,
-      elemStartX: elem.x,
-      elemStartY: elem.y,
-      initialScale: elem.scale,
-      initialRotation: elem.rotation,
-      initialDistance: 100,
-      elementCenterClient: center,
-    };
+    if (!printZoneRef.current) return;
+    const zoneRect = printZoneRef.current.getBoundingClientRect();
+    if (zoneRect.width === 0 || zoneRect.height === 0) return;
 
     setDragMode('move');
     setActiveDragCoords({ x: elem.x, y: elem.y });
-  };
 
-  // 2. Start Scaling Element (Corner Handles)
-  const handlePointerDownScale = (e: React.PointerEvent, elem: PlantedElement) => {
-    if (readOnly) return;
-    e.stopPropagation();
-    onSelectElement(elem.id);
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+    const elemStartX = elem.x;
+    const elemStartY = elem.y;
 
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
+    const handlePointerMove = (moveEv: PointerEvent) => {
+      moveEv.preventDefault();
+      const dx = ((moveEv.clientX - startClientX) / zoneRect.width) * 100;
+      const dy = ((moveEv.clientY - startClientY) / zoneRect.height) * 100;
 
-    const center = getElementClientCenter(elem);
-    const dist = Math.hypot(e.clientX - center.x, e.clientY - center.y);
-
-    dragContextRef.current = {
-      mode: 'scale',
-      elemId: elem.id,
-      startX: e.clientX,
-      startY: e.clientY,
-      elemStartX: elem.x,
-      elemStartY: elem.y,
-      initialScale: elem.scale || 1.0,
-      initialRotation: elem.rotation || 0,
-      initialDistance: dist > 10 ? dist : 50,
-      elementCenterClient: center,
-    };
-
-    setDragMode('scale');
-  };
-
-  // 3. Start Rotating Element (Top Handle)
-  const handlePointerDownRotate = (e: React.PointerEvent, elem: PlantedElement) => {
-    if (readOnly) return;
-    e.stopPropagation();
-    onSelectElement(elem.id);
-
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
-
-    const center = getElementClientCenter(elem);
-
-    dragContextRef.current = {
-      mode: 'rotate',
-      elemId: elem.id,
-      startX: e.clientX,
-      startY: e.clientY,
-      elemStartX: elem.x,
-      elemStartY: elem.y,
-      initialScale: elem.scale || 1.0,
-      initialRotation: elem.rotation || 0,
-      initialDistance: 100,
-      elementCenterClient: center,
-    };
-
-    setDragMode('rotate');
-  };
-
-  // Pointer Move Handler for all active transformations
-  const handlePointerMove = (e: React.PointerEvent, elem: PlantedElement) => {
-    const ctx = dragContextRef.current;
-    if (!ctx.mode || readOnly || selectedElementId !== elem.id) return;
-    e.preventDefault();
-
-    if (ctx.mode === 'move') {
-      const zoneBox = printZoneRef.current?.getBoundingClientRect();
-      if (!zoneBox || zoneBox.width === 0 || zoneBox.height === 0) return;
-
-      const dx = ((e.clientX - ctx.startX) / zoneBox.width) * 100;
-      const dy = ((e.clientY - ctx.startY) / zoneBox.height) * 100;
-
-      let targetX = ctx.elemStartX + dx;
-      let targetY = ctx.elemStartY + dy;
+      let targetX = elemStartX + dx;
+      let targetY = elemStartY + dy;
 
       // Magnetic Snapping to Horizontal Center (50%)
       if (Math.abs(targetX - 50) < 3.5) {
@@ -256,37 +186,88 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         setShowSnapGuideY(false);
       }
 
-      // Safe boundaries clamping (5% to 95%)
+      // Boundaries clamping (5% to 95%)
       const clampedX = Math.round(Math.min(95, Math.max(5, targetX)));
       const clampedY = Math.round(Math.min(95, Math.max(5, targetY)));
 
       setActiveDragCoords({ x: clampedX, y: clampedY });
       onUpdateElementPosition(elem.id, clampedX, clampedY);
-    } else if (ctx.mode === 'scale') {
-      const currentDist = Math.hypot(
-        e.clientX - ctx.elementCenterClient.x,
-        e.clientY - ctx.elementCenterClient.y
-      );
-      const ratio = currentDist / ctx.initialDistance;
-      const rawScale = ctx.initialScale * ratio;
-      const newScale = Math.round(Math.min(1.8, Math.max(0.5, rawScale)) * 100) / 100;
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      setDragMode(null);
+      setShowSnapGuideX(false);
+      setShowSnapGuideY(false);
+      setActiveDragCoords(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  // =========================================================================
+  // 2. DRAG TO SCALE ELEMENT (Corner Handles)
+  // =========================================================================
+  const handlePointerDownScale = (e: React.PointerEvent, elem: PlantedElement) => {
+    if (readOnly) return;
+    e.stopPropagation();
+    e.preventDefault();
+    onSelectElement(elem.id);
+    setDragMode('scale');
+
+    const center = getElementClientCenter(elem);
+    const initialDist = Math.hypot(e.clientX - center.x, e.clientY - center.y) || 50;
+    const initialScale = elem.scale || 1.0;
+
+    const handlePointerMove = (moveEv: PointerEvent) => {
+      moveEv.preventDefault();
+      const currentDist = Math.hypot(moveEv.clientX - center.x, moveEv.clientY - center.y);
+      const ratio = currentDist / initialDist;
+      const rawScale = initialScale * ratio;
+      const newScale = Math.round(Math.min(2.0, Math.max(0.4, rawScale)) * 100) / 100;
 
       if (onUpdateElementScale) {
         onUpdateElementScale(elem.id, newScale);
       }
-    } else if (ctx.mode === 'rotate') {
-      const angleRad = Math.atan2(
-        e.clientY - ctx.elementCenterClient.y,
-        e.clientX - ctx.elementCenterClient.x
-      );
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      setDragMode(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  // =========================================================================
+  // 3. DRAG TO ROTATE ELEMENT (Top Rotation Handle)
+  // =========================================================================
+  const handlePointerDownRotate = (e: React.PointerEvent, elem: PlantedElement) => {
+    if (readOnly) return;
+    e.stopPropagation();
+    e.preventDefault();
+    onSelectElement(elem.id);
+    setDragMode('rotate');
+
+    const center = getElementClientCenter(elem);
+
+    const handlePointerMove = (moveEv: PointerEvent) => {
+      moveEv.preventDefault();
+      const angleRad = Math.atan2(moveEv.clientY - center.y, moveEv.clientX - center.x);
       let angleDeg = Math.round(angleRad * (180 / Math.PI) + 90);
 
       // Normalize to -180 to 180
       while (angleDeg > 180) angleDeg -= 360;
       while (angleDeg < -180) angleDeg += 360;
 
-      // Soft snap to 0, 45, 90, -90, 180
+      // Soft magnetic snap to 0°, 45°, 90°, -90°, 180°
       if (Math.abs(angleDeg) < 4) angleDeg = 0;
+      if (Math.abs(angleDeg - 45) < 3) angleDeg = 45;
+      if (Math.abs(angleDeg + 45) < 3) angleDeg = -45;
       if (Math.abs(angleDeg - 90) < 4) angleDeg = 90;
       if (Math.abs(angleDeg + 90) < 4) angleDeg = -90;
       if (Math.abs(Math.abs(angleDeg) - 180) < 4) angleDeg = 180;
@@ -294,22 +275,25 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       if (onUpdateElementRotation) {
         onUpdateElementRotation(elem.id, angleDeg);
       }
-    }
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      setDragMode(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
   };
 
-  const handlePointerUp = () => {
-    dragContextRef.current.mode = null;
-    setDragMode(null);
-    setShowSnapGuideX(false);
-    setShowSnapGuideY(false);
-    setActiveDragCoords(null);
-  };
-
-  // Desktop Direct File Drag & Drop Handlers
+  // =========================================================================
+  // 4. DESKTOP FILE & GRAPHIC DRAG-AND-DROP HANDLERS
+  // =========================================================================
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!readOnly && onDropUpload) {
+    if (!readOnly) {
       setIsHoveringDropZone(true);
     }
   };
@@ -324,9 +308,35 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setIsHoveringDropZone(false);
-    if (readOnly || !onDropUpload) return;
+    if (readOnly) return;
 
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    // Calculate drop percentage relative to print zone if available
+    let dropX = 50;
+    let dropY = 50;
+    if (printZoneRef.current) {
+      const rect = printZoneRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        dropX = Math.round(Math.min(95, Math.max(5, ((e.clientX - rect.left) / rect.width) * 100)));
+        dropY = Math.round(Math.min(95, Math.max(5, ((e.clientY - rect.top) / rect.height) * 100)));
+      }
+    }
+
+    // A) Check for dropped graphic from application library
+    const graphicData = e.dataTransfer.getData('application/json');
+    if (graphicData && onDropGraphic) {
+      try {
+        const parsed = JSON.parse(graphicData);
+        if (parsed && (parsed.svgContent || parsed.previewUrl || parsed.name)) {
+          onDropGraphic(parsed, dropX, dropY);
+          return;
+        }
+      } catch (err) {
+        // Fall through to file drop
+      }
+    }
+
+    // B) Check for dropped local image files
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && onDropUpload) {
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
@@ -346,9 +356,8 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     }
   };
 
-  const visibleElements = elements.filter(
-    (el) => el.side === side && (el.zone === activeZone.name || elements.length === 1)
-  );
+  // ALL elements for the CURRENT side are visible simultaneously!
+  const visibleElements = elements.filter((el) => el.side === side);
 
   return (
     <div
@@ -356,16 +365,16 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative w-full aspect-[4/5] max-w-[430px] mx-auto rounded-2xl overflow-hidden bg-gradient-to-b from-[#13161c] to-[#0c0d11] border border-neutral-800 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex items-center justify-center select-none touch-canvas transition-all ${
-        isHoveringDropZone ? 'ring-4 ring-[#39FF14] ring-opacity-70' : ''
+      className={`relative w-full aspect-[4/5] max-w-[430px] mx-auto rounded-2xl overflow-hidden bg-gradient-to-b from-[#13161c] via-[#0f1117] to-[#0a0c10] border border-neutral-800 shadow-[0_20px_50px_rgba(0,0,0,0.85)] flex items-center justify-center select-none touch-canvas transition-all ${
+        isHoveringDropZone ? 'ring-4 ring-[#39FF14] ring-opacity-80 scale-[1.01]' : ''
       }`}
     >
-      {/* Background Technical Blueprint Grid with Subtle Gradient */}
-      <div className="absolute inset-0 sp-stripes-subtle opacity-35 pointer-events-none" />
+      {/* Background Technical Grid Pattern */}
+      <div className="absolute inset-0 sp-stripes-subtle opacity-25 pointer-events-none" />
 
       {/* Top Left View Angle & Garment Specs Header */}
       <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 pointer-events-none">
-        <span className="px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[10px] font-mono font-bold tracking-wider uppercase text-white border border-neutral-700/80 shadow-sm">
+        <span className="px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[10px] font-mono font-bold tracking-wider uppercase text-white border border-neutral-700/80 shadow-sm">
           {side.toUpperCase()} VIEW
         </span>
         <span className="px-2 py-0.5 rounded-md bg-[#39FF14]/15 backdrop-blur-md text-[10px] font-mono font-bold tracking-wider uppercase text-[#39FF14] border border-[#39FF14]/40 shadow-sm">
@@ -375,45 +384,51 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
       {/* Top Right Fabric Quality Tag */}
       <div className="absolute top-3 right-3 z-30 pointer-events-none hidden sm:block">
-        <span className="px-2 py-0.5 rounded-md bg-neutral-900/80 backdrop-blur-md text-[9px] font-mono text-neutral-400 border border-neutral-800">
-          380 GSM HEAVYWEIGHT
+        <span className="px-2 py-0.5 rounded-md bg-neutral-900/85 backdrop-blur-md text-[9px] font-mono text-neutral-300 border border-neutral-800 font-semibold">
+          380 GSM HEAVYWEIGHT FLEECE
         </span>
       </div>
 
       {/* Desktop Direct File Drop Overlay */}
       {isHoveringDropZone && (
         <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fadeIn pointer-events-none">
-          <div className="w-16 h-16 rounded-2xl bg-[#39FF14]/20 border-2 border-[#39FF14] flex items-center justify-center text-[#39FF14] animate-bounce mb-3 shadow-[0_0_25px_rgba(57,255,20,0.4)]">
+          <div className="w-16 h-16 rounded-2xl bg-[#39FF14]/20 border-2 border-[#39FF14] flex items-center justify-center text-[#39FF14] animate-bounce mb-3 shadow-[0_0_25px_rgba(57,255,20,0.5)]">
             <UploadCloud className="w-8 h-8" />
           </div>
           <h4 className="text-lg font-heading font-black text-white uppercase tracking-wider">
-            Drop Image on Hoodie
+            Drop Artwork on Hoodie
           </h4>
           <p className="text-xs text-neutral-300 mt-1 max-w-xs">
-            Instantly plants your photo or graphic on the {activeZone.name} print zone.
+            Instantly plants your logo or artwork onto the {activeZone.name} location.
           </p>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* REALISTIC VECTOR GARMENT ILLUSTRATION & TEXTURE ENGINE */}
+      {/* 1. REAL AUTHENTIC HOODIE PHOTOGRAPHY (No sketches or mock jackets) */}
       {/* ========================================================================= */}
-      <div className="w-full h-full p-2 flex items-center justify-center relative">
-        <RealisticHoodieGraphic
-          imageType={imageType}
-          colorName={colorName}
-          side={side}
-          className="w-full h-full max-h-[96%]"
-          highlightTexture={true}
+      <div className="w-full h-full p-2 flex items-center justify-center relative pointer-events-none select-none">
+        <img
+          src={hoodiePhotoUrl}
+          alt={`${product?.name || 'Salapeed'} ${colorName} hoodie - ${side} view`}
+          className="w-full h-full max-h-[96%] object-contain filter drop-shadow-[0_12px_32px_rgba(0,0,0,0.9)] transition-all duration-300"
+          draggable={false}
+          onError={(e) => {
+            // Safe fallback to pullover charcoal if image fails
+            const target = e.currentTarget as HTMLImageElement;
+            if (!target.src.includes('fleece-hoodie-charcoal')) {
+              target.src = '/images/fleece-hoodie-charcoal.jpg';
+            }
+          }}
         />
       </div>
 
       {/* ========================================================================= */}
-      {/* PRINT-SAFE BOUNDING BOX & INTERACTIVE TRANSFORM CANVAS */}
+      {/* 2. PRINT-SAFE BOUNDING BOX & ACTIVE DRAG-AND-DROP CANVAS */}
       {/* ========================================================================= */}
       <div
         ref={printZoneRef}
-        className="absolute z-30 transition-all duration-200 pointer-events-auto"
+        className="absolute z-30 pointer-events-auto"
         style={{
           top: `${activeZone.boundingBox.top}%`,
           left: `${activeZone.boundingBox.left}%`,
@@ -422,22 +437,47 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         }}
       >
         {/* Dashed Print-Safe Boundary Box */}
-        <div className="absolute inset-0 border-2 border-dashed border-[#39FF14]/70 rounded-lg pointer-events-none shadow-[0_0_15px_rgba(57,255,20,0.18)]">
-          <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 text-[#39FF14] text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-[#39FF14]/40 shadow-md">
-            {activeZone.name.toUpperCase()} (PRINT SAFE ZONE)
+        <div className="absolute inset-0 border-2 border-dashed border-[#39FF14]/80 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.22)]">
+          <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/95 text-[#39FF14] text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-[#39FF14]/50 shadow-md">
+            {activeZone.name.toUpperCase()} (SAFE PRINT ZONE)
           </span>
         </div>
 
+        {/* Visual Exclusion Zones for Front View (Reserved Logo Badge Area & Pocket Buffer) */}
+        {side === 'front' && (
+          <>
+            {/* Reserved Logo Area Exclusion (Chest Badge) when printing on Centre Chest */}
+            {activeZone.id === 'front-centre' && (
+              <div
+                className="absolute -right-20 top-0 w-16 h-16 border border-dashed border-neutral-600/70 bg-neutral-900/30 rounded-lg p-1 flex flex-col items-center justify-center text-center pointer-events-none"
+                title="Reserved Area for Brand Crest / Logo Badge"
+              >
+                <span className="text-[7px] font-mono uppercase text-neutral-400 font-bold leading-tight">
+                  Reserved for Logo Badge
+                </span>
+                <span className="text-[6px] font-mono text-neutral-500 mt-0.5">(Exclusion)</span>
+              </div>
+            )}
+
+            {/* Kangaroo Pocket Seam Exclusion Buffer Line */}
+            <div className="absolute -bottom-4 left-0 right-0 border-b-2 border-dashed border-red-500/40 pointer-events-none flex justify-center">
+              <span className="text-[7px] font-mono text-red-400/80 bg-black/80 px-1 rounded -bottom-2 relative">
+                Kangaroo Pocket Seam &bull; Exclusion Line
+              </span>
+            </div>
+          </>
+        )}
+
         {/* Magnetic Snapping Guidelines */}
         {showSnapGuideX && (
-          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-l border-dashed border-black/50" />
+          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-l border-dashed border-black/60" />
         )}
         {showSnapGuideY && (
-          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-t border-dashed border-black/50" />
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-t border-dashed border-black/60" />
         )}
 
         {/* ===================================================================== */}
-        {/* PLANTED PRINT ELEMENTS ON ACTIVE ZONE */}
+        {/* 3. PLANTED ELEMENTS (All elements on current side rendered cleanly) */}
         {/* ===================================================================== */}
         {visibleElements.map((elem) => {
           const isSelected = elem.id === selectedElementId;
@@ -445,7 +485,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
           return (
             <div
               key={elem.id}
-              className={`absolute transition-transform select-none ${
+              className={`absolute select-none ${
                 isSelected ? 'z-40' : 'z-20'
               }`}
               style={{
@@ -457,13 +497,11 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
             >
               {/* INTERACTIVE TRANSFORMER BOUNDING BOX & HANDLES */}
               {isSelected && !readOnly && (
-                <div className="absolute -inset-3.5 border-2 border-[#39FF14] rounded-lg pointer-events-none shadow-[0_0_14px_rgba(57,255,20,0.5)]">
-                  {/* Top Rotation Handle Stem */}
+                <div className="absolute -inset-3.5 border-2 border-[#39FF14] rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.6)]">
+                  {/* Top Rotation Handle */}
                   <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto">
                     <button
                       onPointerDown={(e) => handlePointerDownRotate(e, elem)}
-                      onPointerMove={(e) => handlePointerMove(e, elem)}
-                      onPointerUp={handlePointerUp}
                       className="w-5 h-5 rounded-full bg-black border-2 border-[#39FF14] text-[#39FF14] flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-125 transition shadow-lg"
                       title="Drag to Rotate Angle"
                     >
@@ -472,38 +510,45 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                     <div className="w-0.5 h-2 bg-[#39FF14]" />
                   </div>
 
-                  {/* 4 Corner Scale Handles (Northwest, Northeast, Southeast, Southwest) */}
+                  {/* PROMINENT DELETE BUTTON FOR SELECTED ELEMENT */}
+                  <div className="absolute -top-7 right-0 pointer-events-auto">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDeleteElement) onDeleteElement(elem.id);
+                      }}
+                      className="w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center cursor-pointer hover:scale-125 transition shadow-lg border border-red-300"
+                      title="Delete Element (Del / Backspace)"
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+
+                  {/* 4 Corner Scale Handles */}
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    onPointerMove={(e) => handlePointerMove(e, elem)}
-                    onPointerUp={handlePointerUp}
                     className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nwse-resize hover:scale-125 transition shadow"
-                    title="Drag to Scale Size"
+                    title="Drag to Resize"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    onPointerMove={(e) => handlePointerMove(e, elem)}
-                    onPointerUp={handlePointerUp}
                     className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nesw-resize hover:scale-125 transition shadow"
-                    title="Drag to Scale Size"
+                    title="Drag to Resize"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    onPointerMove={(e) => handlePointerMove(e, elem)}
-                    onPointerUp={handlePointerUp}
                     className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nesw-resize hover:scale-125 transition shadow"
-                    title="Drag to Scale Size"
+                    title="Drag to Resize"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    onPointerMove={(e) => handlePointerMove(e, elem)}
-                    onPointerUp={handlePointerUp}
                     className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nwse-resize hover:scale-125 transition shadow"
-                    title="Drag to Scale Size"
+                    title="Drag to Resize"
                   />
 
-                  {/* Center Coordinates & Transformation Live Badge */}
-                  <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 text-[8px] font-mono text-[#39FF14] px-1.5 py-0.5 rounded border border-[#39FF14]/50 pointer-events-none shadow">
+                  {/* Center Coordinates & Scale Badge */}
+                  <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/95 text-[8px] font-mono text-[#39FF14] px-1.5 py-0.5 rounded border border-[#39FF14]/50 pointer-events-none shadow font-bold">
                     {Math.round(elem.scale * 100)}% · {elem.rotation}°
                   </div>
                 </div>
@@ -512,22 +557,20 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
               {/* PRINT ELEMENT BODY (Draggable Core) */}
               <div
                 onPointerDown={(e) => handlePointerDownMove(e, elem)}
-                onPointerMove={(e) => handlePointerMove(e, elem)}
-                onPointerUp={handlePointerUp}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectElement(elem.id);
                 }}
-                className="relative pointer-events-auto filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+                className="relative pointer-events-auto filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)]"
               >
-                {/* 1. Curated Vector Graphics with DTG Screenprint Texture */}
+                {/* 1. Curated Vector Graphics */}
                 {elem.type === 'graphic' && elem.svgContent ? (
                   <div
                     className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center p-1 pointer-events-none"
                     dangerouslySetInnerHTML={{ __html: elem.svgContent }}
                   />
                 ) : elem.type === 'upload' && elem.imageUrl ? (
-                  // 2. Customer Uploaded Image with Optional Low-Res Warning
+                  // 2. Customer Uploaded Image
                   <div className="relative pointer-events-none">
                     <img
                       src={elem.imageUrl}
@@ -547,7 +590,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                     {renderCurvedText(
                       elem.textContent || 'SALAPEED',
                       elem.textFont || 'condensed',
-                      elem.textColor || '#ffffff',
+                      elem.textColor || '#39FF14',
                       !!elem.textCurve
                     )}
                   </div>
@@ -567,11 +610,11 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         <div className="absolute bottom-2.5 right-3 z-30 flex items-center gap-1.5">
           <button
             onClick={() => onUpdateElementPosition(selectedElementId, 50, 50)}
-            className="p-1.5 rounded-lg bg-black/80 hover:bg-neutral-800 text-[#39FF14] border border-neutral-700/80 transition cursor-pointer shadow-md flex items-center gap-1 text-[10px] font-mono"
-            title="Snap to Center"
+            className="p-1.5 rounded-lg bg-black/90 hover:bg-neutral-800 text-[#39FF14] border border-neutral-700/80 transition cursor-pointer shadow-md flex items-center gap-1 text-[10px] font-mono font-bold"
+            title="Snap element to center"
           >
             <AlignCenter className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Center</span>
+            <span className="hidden sm:inline">Center 50%</span>
           </button>
         </div>
       )}

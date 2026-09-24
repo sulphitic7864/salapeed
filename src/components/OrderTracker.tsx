@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Order, AdminConfig } from '../types';
 import { formatBHD } from '../lib/store';
-import { Search, Clock, Printer, Truck, CheckCircle2, ArrowLeft, MessageCircle, MapPin } from 'lucide-react';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
+import { Search, Clock, Printer, Truck, CheckCircle2, ArrowLeft, Phone, MapPin, Download, FileCode } from 'lucide-react';
+import { getHoodiePhoto } from '../data/mockData';
+import { downloadPrintShopElectronicFile } from '../lib/printShopExport';
 
 interface OrderTrackerProps {
   initialOrderId?: string;
@@ -158,12 +159,10 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
                   className="p-2.5 rounded-lg bg-neutral-900/80 border border-neutral-800/80 flex items-center gap-3"
                 >
                   <div className="w-12 h-14 rounded-md bg-[#0b0c10] border border-neutral-800 p-1 flex items-center justify-center shrink-0">
-                    <RealisticHoodieGraphic
-                      imageType={it.imageType}
-                      colorName={it.color}
-                      side="front"
-                      className="w-full h-full"
-                      highlightTexture={false}
+                    <img
+                      src={getHoodiePhoto(it.imageType, it.color, 'front')}
+                      alt={it.productName}
+                      className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     />
                   </div>
                   <div className="flex-1 space-y-0.5">
@@ -207,16 +206,24 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
             </div>
           </div>
 
-          {/* Direct WhatsApp help button */}
-          <a
-            href={`https://wa.me/${config.shopPhone.replace(/[^0-9]/g, '')}?text=Inquiry%20regarding%20Salapeed%20Order%20${currentOrder.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-2.5 px-4 bg-[#121418] hover:bg-[#1a1e26] text-neutral-300 hover:text-white border border-neutral-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
-          >
-            <MessageCircle className="w-4 h-4 text-[#39FF14]" />
-            <span>Need Help? Contact Print Shop on WhatsApp</span>
-          </a>
+          {/* Electronic File and Support */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => downloadPrintShopElectronicFile(currentOrder)}
+              className="flex-1 py-2.5 px-4 bg-[#121418] hover:bg-[#1a1e26] text-[#39FF14] border border-[#39FF14]/40 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <FileCode className="w-4 h-4" />
+              <span>Download Workshop Print File (.JSON)</span>
+            </button>
+            <a
+              href={`tel:${config.shopPhone.replace(/[^0-9+]/g, '')}`}
+              className="py-2.5 px-4 bg-[#121418] hover:bg-[#1a1e26] text-neutral-300 hover:text-white border border-neutral-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <Phone className="w-4 h-4 text-neutral-400" />
+              <span>Call Shop: {config.shopPhone}</span>
+            </a>
+          </div>
         </div>
       ) : hasSearched ? (
         <div className="blueprint-card p-8 text-center space-y-2">

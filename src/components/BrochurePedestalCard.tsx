@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { COLOR_OPTIONS, SALAPEED_BRAND } from '../data/mockData';
-import { MessageCircle, Globe, Instagram, Check, ArrowRight } from 'lucide-react';
+import { Phone, Globe, Instagram, Check, ArrowRight } from 'lucide-react';
 
 interface BrochurePedestalCardProps {
   product: Product;
@@ -181,14 +181,12 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
 
       {/* FOOTER BAR: Official Salapeed Contact Details */}
       <div className="relative z-10 bg-[#dfdad0]/80 backdrop-blur-sm border-t border-[#d3cdc0] px-4 py-2.5 flex items-center justify-between text-[11px] font-mono text-neutral-800">
-        {/* WhatsApp & Call */}
+        {/* Phone / Call */}
         <a
-          href={SALAPEED_BRAND.whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 hover:text-green-700 font-bold transition"
+          href={`tel:${SALAPEED_BRAND.phone.replace(/[^0-9+]/g, '')}`}
+          className="flex items-center gap-1.5 hover:text-black font-bold transition"
         >
-          <MessageCircle className="w-3.5 h-3.5 text-green-700 fill-green-700/20" />
+          <Phone className="w-3.5 h-3.5 text-neutral-800" />
           <span>{SALAPEED_BRAND.phone}</span>
         </a>
 

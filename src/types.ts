@@ -105,7 +105,7 @@ export interface Order {
   customerName: string;
   customerPhone: string;
   customerAddress: string;
-  paymentMethod: 'Benefit Transfer' | 'Cash on Delivery';
+  paymentMethod: 'BenefitPay' | 'Benefit Transfer';
   items: CartItem[];
   subtotal: number;
   deliveryFee: number;

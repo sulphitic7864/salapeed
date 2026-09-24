@@ -4,14 +4,17 @@ import { formatBHD } from '../lib/store';
 import confetti from 'canvas-confetti';
 import {
   CheckCircle2,
-  MessageCircle,
   Clock,
   Printer,
   Truck,
   ArrowRight,
   Home,
   ShieldCheck,
+  FileCode,
+  Download,
+  ExternalLink,
 } from 'lucide-react';
+import { downloadPrintShopElectronicFile, openPrintShopSpecSheet } from '../lib/printShopExport';
 
 interface OrderConfirmationProps {
   order: Order;
@@ -41,36 +44,13 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
   }, []);
 
   const stages = [
-    { label: 'Order placed', icon: Clock, desc: 'Recorded & payment confirmed' },
+    { label: 'Order placed', icon: Clock, desc: 'Recorded & BenefitPay payment queued' },
     { label: 'In production / printing', icon: Printer, desc: 'Sent to Bahrain print shop' },
     { label: 'Ready for delivery / pickup', icon: Truck, desc: 'Printing complete & dispatched' },
   ];
 
   const currentStageIndex = stages.findIndex((s) => s.label === order.status);
   const activeIdx = currentStageIndex === -1 ? 0 : currentStageIndex;
-
-  // Generate WhatsApp message URL
-  const generateWhatsAppLink = () => {
-    const cleanPhone = config.shopPhone.replace(/[^0-9]/g, '');
-    const itemsText = order.items
-      .map(
-        (it) =>
-          `• ${it.productName} (${it.color}, ${it.size}) x${it.qty} [${it.summary}]`
-      )
-      .join('\n');
-
-    const msg = `*SALAPEED ORDER CONFIRMATION*\n` +
-      `*Order ID:* ${order.id}\n` +
-      `*Customer:* ${order.customerName}\n` +
-      `*Phone:* ${order.customerPhone}\n` +
-      `*Address:* ${order.customerAddress}\n` +
-      `*Payment:* ${order.paymentMethod}\n` +
-      `*Total:* ${formatBHD(order.total)}\n\n` +
-      `*Garment Specs:*\n${itemsText}\n\n` +
-      `Please confirm production at the Bahrain print shop!`;
-
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-  };
 
   return (
     <div className="space-y-5 pb-12 text-center max-w-lg mx-auto">
@@ -87,28 +67,45 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
           Order #{order.id}
         </h2>
         <p className="text-xs text-neutral-400 max-w-sm mx-auto">
-          Thank you, <strong className="text-white">{order.customerName}</strong>! Your hoodie order has been received and scheduled for custom printing in Bahrain.
+          Thank you, <strong className="text-white">{order.customerName}</strong>! Your hoodie order has been recorded and scheduled for custom printing in Bahrain.
         </p>
       </div>
 
-      {/* WhatsApp Confirmation Action Button */}
-      <div className="p-4 rounded-xl bg-[#121419] border border-neutral-800 space-y-2.5 text-left">
-        <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
-          <MessageCircle className="w-4 h-4 text-[#39FF14]" />
-          <span>WhatsApp Notification & Updates</span>
+      {/* ELECTRONIC FILE FOR PRINT SHOP (HD Images & Specs) */}
+      <div className="p-4 rounded-xl bg-[#121419] border border-neutral-800 space-y-3 text-left">
+        <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+            <FileCode className="w-4 h-4 text-[#39FF14]" />
+            <span>Print Shop Electronic File & HD Images</span>
+          </div>
+          <span className="text-[10px] font-mono text-[#39FF14] bg-[#39FF14]/10 px-2 py-0.5 rounded border border-[#39FF14]/30 font-bold">
+            HD Print Ready
+          </span>
         </div>
+
         <p className="text-xs text-neutral-400">
-          Send a 1-tap confirmation to our Bahrain print shop on WhatsApp, or keep this page open to track real-time printing.
+          An electronic production file with high-definition front and back views, coordinate scaling, and artwork vectors has been generated for the Bahrain workshop.
         </p>
-        <a
-          href={generateWhatsAppLink()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full py-3 px-4 bg-[#25D366] hover:bg-[#20ba5a] text-black font-heading font-black text-sm uppercase rounded-lg shadow flex items-center justify-center gap-2 transition cursor-pointer"
-        >
-          <MessageCircle className="w-4 h-4" />
-          <span>Send Order on WhatsApp</span>
-        </a>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => downloadPrintShopElectronicFile(order)}
+            className="py-2.5 px-3 bg-neutral-900 hover:bg-neutral-800 text-[#39FF14] font-mono text-xs font-bold rounded-lg border border-[#39FF14]/40 flex items-center justify-center gap-2 transition cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Electronic File (.JSON)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openPrintShopSpecSheet(order)}
+            className="py-2.5 px-3 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition cursor-pointer shadow"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>View HD Print Spec Sheet</span>
+          </button>
+        </div>
       </div>
 
       {/* Order Status Stepper */}

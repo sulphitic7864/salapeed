@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore, formatBHD } from './lib/store';
-import { Product, PlantedElement, Order, OrderStatus } from './types';
+import { Product, PlantedElement, Order, OrderStatus, GarmentSide } from './types';
 import { HomeView } from './components/HomeView';
 import { ProductCatalogue } from './components/ProductCatalogue';
 import { ProductDetail } from './components/ProductDetail';
@@ -11,6 +11,7 @@ import { CheckoutView } from './components/CheckoutView';
 import { OrderConfirmation } from './components/OrderConfirmation';
 import { OrderTracker } from './components/OrderTracker';
 import { AdminPortal } from './components/admin/AdminPortal';
+import { GarmentSelectionModal } from './components/GarmentSelectionModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import {
@@ -46,22 +47,13 @@ export default function App() {
   const [selectedColor, setSelectedColor] = useState<string>(activeProduct?.colors[0] || 'Navy');
   const [selectedSize, setSelectedSize] = useState<string>(activeProduct?.sizes[2] || 'M');
 
-  // Placed print elements on the active custom garment
-  const [placedElements, setPlacedElements] = useState<PlantedElement[]>([
-    {
-      id: 'initial-back-graphic',
-      side: 'back',
-      zone: 'Full back',
-      type: 'graphic',
-      graphicId: 'g-turbo-flame',
-      graphicName: 'Turbo Flame GT',
-      svgContent: store.graphics[0]?.svgContent,
-      x: 50,
-      y: 45,
-      scale: 1.0,
-      rotation: 0,
-    },
-  ]);
+  // Placed print elements on the active custom garment (starts clean)
+  const [placedElements, setPlacedElements] = useState<PlantedElement[]>([]);
+  const [activeCustomizingSide, setActiveCustomizingSide] = useState<GarmentSide>('front');
+  const [activeCustomizingZone, setActiveCustomizingZone] = useState<string>('Centre Chest');
+
+  // Mandatory garment configuration modal
+  const [isGarmentModalOpen, setIsGarmentModalOpen] = useState(false);
 
   // Last confirmed order
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
@@ -71,11 +63,24 @@ export default function App() {
   const cartCount = store.cart.reduce((acc, it) => acc + it.qty, 0);
 
   // Navigation handlers
-  const handleStartCustomizing = (prod?: Product) => {
-    const target = prod || store.products[0];
-    setActiveProduct(target);
-    setSelectedColor(target.colors[0] || 'Black');
-    setSelectedSize(target.sizes[2] || target.sizes[0]);
+  const handleStartCustomizing = (prod?: Product, color?: string) => {
+    if (prod && color) {
+      setActiveProduct(prod);
+      setSelectedColor(color);
+      setSelectedSize(prod.sizes[2] || prod.sizes[0]);
+      setCurrentScreen('customize');
+    } else {
+      // User must explicitly pick type, age, and color via modal
+      setIsGarmentModalOpen(true);
+    }
+  };
+
+  const handleConfirmGarmentSelection = (product: Product, color: string, age: 'adult' | 'kids') => {
+    setActiveProduct(product);
+    setSelectedColor(color);
+    setSelectedSize(age === 'kids' ? (product.sizes[1] || '6Y') : (product.sizes[2] || 'L'));
+    setPlacedElements([]); // Start with clean canvas
+    setIsGarmentModalOpen(false);
     setCurrentScreen('customize');
   };
 
@@ -119,7 +124,7 @@ export default function App() {
     customerName: string;
     customerPhone: string;
     customerAddress: string;
-    paymentMethod: 'Benefit Transfer' | 'Cash on Delivery';
+    paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
   }) => {
     const newOrder = store.createOrder({
@@ -142,7 +147,11 @@ export default function App() {
 
       {/* Top Brand Navigation Header */}
       <header className="sticky top-0 z-40 bg-[#0d0f14]/90 backdrop-blur-md border-b border-neutral-800/80">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div
+          className={`mx-auto px-4 py-3 flex items-center justify-between gap-3 ${
+            currentScreen === 'home' ? 'max-w-6xl' : 'max-w-4xl'
+          }`}
+        >
           {/* Logo & Brand Title */}
           <div
             onClick={() => setCurrentScreen('home')}
@@ -234,7 +243,11 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 pt-4 sm:pt-6 pb-20 sm:pb-8">
+      <main
+        className={`flex-1 w-full mx-auto px-4 pt-4 sm:pt-6 pb-20 sm:pb-8 ${
+          currentScreen === 'home' ? 'max-w-6xl' : 'max-w-4xl'
+        }`}
+      >
         {/* 1. HOME SCREEN */}
         {currentScreen === 'home' && (
           <HomeView
@@ -243,6 +256,7 @@ export default function App() {
             onStartCustomizing={handleStartCustomizing}
             onBrowseCatalogue={() => setCurrentScreen('catalogue')}
             onOpenTracker={() => setCurrentScreen('tracker')}
+            onSelectProduct={handleSelectProduct}
           />
         )}
 
@@ -286,7 +300,12 @@ export default function App() {
             onSelectColor={setSelectedColor}
             onSelectSize={setSelectedSize}
             onUpdateElements={setPlacedElements}
-            onOpenLibrary={() => setCurrentScreen('library')}
+            onOpenLibrary={(side, zone) => {
+              if (side) setActiveCustomizingSide(side);
+              if (zone) setActiveCustomizingZone(zone);
+              setCurrentScreen('library');
+            }}
+            onOpenGarmentModal={() => setIsGarmentModalOpen(true)}
             onApproveDesign={handleApproveDesign}
             onBack={() => setCurrentScreen('product-detail')}
             printFee={store.config.printFee}
@@ -301,8 +320,8 @@ export default function App() {
             onSelectGraphic={(g) => {
               const newElem: PlantedElement = {
                 id: `elem-graphic-${Date.now()}`,
-                side: 'back',
-                zone: 'Full back',
+                side: activeCustomizingSide,
+                zone: activeCustomizingZone,
                 type: 'graphic',
                 graphicId: g.id,
                 graphicName: g.name,
@@ -319,8 +338,8 @@ export default function App() {
             onSelectUpload={(imageUrl, fileName, isLowRes) => {
               const newElem: PlantedElement = {
                 id: `elem-upload-${Date.now()}`,
-                side: 'back',
-                zone: 'Full back',
+                side: activeCustomizingSide,
+                zone: activeCustomizingZone,
                 type: 'upload',
                 imageUrl,
                 graphicName: fileName,
@@ -336,8 +355,8 @@ export default function App() {
             onSelectText={() => {
               const newElem: PlantedElement = {
                 id: `elem-text-${Date.now()}`,
-                side: 'front',
-                zone: 'Centre chest',
+                side: activeCustomizingSide,
+                zone: activeCustomizingZone,
                 type: 'text',
                 textContent: 'SALAPEED',
                 textFont: 'condensed',
@@ -500,6 +519,14 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Mandatory Garment Selection Modal (Requires User Input for Type, Age & Color) */}
+      <GarmentSelectionModal
+        isOpen={isGarmentModalOpen}
+        products={store.products}
+        onClose={() => setIsGarmentModalOpen(false)}
+        onConfirmSelection={handleConfirmGarmentSelection}
+      />
     </div>
   );
 }

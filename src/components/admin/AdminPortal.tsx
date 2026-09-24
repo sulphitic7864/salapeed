@@ -28,7 +28,13 @@ import {
   Database,
   ArrowLeft,
   X,
+  MessageCircle,
+  Download,
+  Send,
+  Palette,
+  Ruler,
 } from 'lucide-react';
+import { downloadPrintShopElectronicFile, openPrintShopSpecSheet } from '../../lib/printShopExport';
 
 interface AdminPortalProps {
   isAdmin: boolean;
@@ -86,6 +92,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Orders search
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilter, setOrderFilter] = useState<string>('All');
+
+  // Custom Color and Size input state per product
+  const [customColorName, setCustomColorName] = useState<Record<string, string>>({});
+  const [customColorHex, setCustomColorHex] = useState<Record<string, string>>({});
+  const [customSizeInput, setCustomSizeInput] = useState<Record<string, string>>({});
+
+  // WhatsApp admin messaging custom input per order
+  const [customWaText, setCustomWaText] = useState<Record<string, string>>({});
 
   if (!isAdmin) {
     return (
@@ -400,6 +414,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <FileText className="w-3.5 h-3.5 text-[#39FF14]" />
                       <span className="hidden sm:inline">Spec Sheet</span>
                     </button>
+
+                    <button
+                      onClick={() => downloadPrintShopElectronicFile(o)}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[#39FF14] transition cursor-pointer flex items-center gap-1 text-xs border border-neutral-700"
+                      title="Download Electronic File (.JSON) for Workshop RIP Printers"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">JSON</span>
+                    </button>
+
+                    <button
+                      onClick={() => openPrintShopSpecSheet(o)}
+                      className="p-1.5 rounded-lg bg-[#39FF14]/15 hover:bg-[#39FF14]/25 text-[#39FF14] border border-[#39FF14]/40 transition cursor-pointer flex items-center gap-1 text-xs"
+                      title="Open printable HD workshop spec sheet"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">HD Sheet</span>
+                    </button>
                   </div>
                 </div>
 
@@ -431,6 +463,88 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <span>
                     Total: <strong className="text-[#39FF14] text-sm">{formatBHD(o.total)}</strong>
                   </span>
+                </div>
+
+                {/* WHATSAPP NOTIFICATION DISPATCHER (ADMIN ONLY) */}
+                <div className="p-3 bg-neutral-900/90 rounded-xl border border-neutral-800 space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+                      <MessageCircle className="w-3.5 h-3.5 text-green-400" />
+                      <span>WhatsApp Customer Notification (Admin Only)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      Target: {o.customerPhone}
+                    </span>
+                  </div>
+
+                  {/* Preset message buttons */}
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg = `Hi ${o.customerName}, your Salapeed custom hoodie order #${o.id} is confirmed and queued for printing at our Bahrain workshop! Live tracking: ${window.location.origin}`;
+                        const phone = o.customerPhone.replace(/[^0-9]/g, '');
+                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                      }}
+                      className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[10px] rounded cursor-pointer transition flex items-center gap-1"
+                    >
+                      <span>1. Notify: Queued for Print</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg = `Update for ${o.customerName}: Your Salapeed hoodie (Order #${o.id}) is actively printing on our direct-to-garment press in Bahrain. Quality inspection up next!`;
+                        const phone = o.customerPhone.replace(/[^0-9]/g, '');
+                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                      }}
+                      className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[10px] rounded cursor-pointer transition flex items-center gap-1"
+                    >
+                      <span>2. Notify: On Press</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg = `Great news ${o.customerName}! Your custom hoodie order #${o.id} has passed QC and is out for delivery to your address in Bahrain. Tracking: ${window.location.origin}`;
+                        const phone = o.customerPhone.replace(/[^0-9]/g, '');
+                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                      }}
+                      className="px-2 py-1 bg-green-950/60 hover:bg-green-900/60 text-green-300 border border-green-800 text-[10px] rounded cursor-pointer transition flex items-center gap-1"
+                    >
+                      <span>3. Notify: Out for Delivery</span>
+                    </button>
+                  </div>
+
+                  {/* Custom Message Dispatch */}
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder={`Send custom WhatsApp message to ${o.customerName}...`}
+                      value={customWaText[o.id] || ''}
+                      onChange={(e) =>
+                        setCustomWaText({ ...customWaText, [o.id]: e.target.value })
+                      }
+                      className="flex-1 px-3 py-1.5 bg-black/60 border border-neutral-700 rounded-lg text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-[#39FF14]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const customMsg =
+                          customWaText[o.id] ||
+                          `Hello ${o.customerName}, this is Salapeed Streetwear regarding your order #${o.id}.`;
+                        const phone = o.customerPhone.replace(/[^0-9]/g, '');
+                        window.open(
+                          `https://wa.me/${phone}?text=${encodeURIComponent(customMsg)}`,
+                          '_blank'
+                        );
+                      }}
+                      className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-black font-heading font-black text-xs uppercase rounded-lg flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>Send</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -477,37 +591,209 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   />
                 </div>
 
-                {/* Available Colors */}
-                <div className="space-y-1.5">
-                  <label className="text-xs text-neutral-400">Enabled Colors</label>
+                {/* Available Colors Editor */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-neutral-300 flex items-center gap-1">
+                      <Palette className="w-3 h-3 text-[#39FF14]" />
+                      <span>Available Colors ({prod.colors.length})</span>
+                    </label>
+                    <span className="text-[10px] text-neutral-500 font-mono">Click to toggle or remove</span>
+                  </div>
+
+                  {/* Active Color Chips with Remove 'x' */}
                   <div className="flex flex-wrap gap-1.5">
-                    {Object.keys(COLOR_OPTIONS).map((col) => {
-                      const isEnabled = prod.colors.includes(col);
-                      return (
-                        <button
-                          key={col}
-                          onClick={() => {
-                            const newCols = isEnabled
-                              ? prod.colors.filter((c) => c !== col)
-                              : [...prod.colors, col];
-                            if (newCols.length > 0) {
-                              onUpdateProduct(prod.id, { colors: newCols });
-                            }
-                          }}
-                          className={`px-2 py-1 rounded text-[10px] font-mono border transition cursor-pointer flex items-center gap-1 ${
-                            isEnabled
-                              ? 'bg-[#39FF14]/15 border-[#39FF14] text-white font-bold'
-                              : 'bg-neutral-900 border-neutral-800 text-neutral-500'
-                          }`}
-                        >
-                          <span
-                            className="w-2.5 h-2.5 rounded-full inline-block"
-                            style={{ backgroundColor: COLOR_OPTIONS[col]?.hex }}
-                          />
-                          <span>{col}</span>
-                        </button>
-                      );
-                    })}
+                    {prod.colors.map((col) => (
+                      <span
+                        key={col}
+                        className="px-2 py-1 rounded bg-[#39FF14]/15 border border-[#39FF14] text-white text-[11px] font-mono font-bold flex items-center gap-1.5 shadow"
+                      >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full inline-block border border-white/40"
+                          style={{ backgroundColor: COLOR_OPTIONS[col]?.hex || '#444' }}
+                        />
+                        <span>{col}</span>
+                        {prod.colors.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const remaining = prod.colors.filter((c) => c !== col);
+                              onUpdateProduct(prod.id, { colors: remaining });
+                            }}
+                            className="text-neutral-400 hover:text-red-400 cursor-pointer ml-0.5"
+                            title="Remove color"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Add Color Presets & Custom Color Form */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] text-neutral-400 font-mono block">Preset Colorways:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.keys(COLOR_OPTIONS).map((presetCol) => {
+                        const isAlreadyAdded = prod.colors.includes(presetCol);
+                        return (
+                          <button
+                            key={presetCol}
+                            type="button"
+                            onClick={() => {
+                              if (!isAlreadyAdded) {
+                                onUpdateProduct(prod.id, { colors: [...prod.colors, presetCol] });
+                              }
+                            }}
+                            disabled={isAlreadyAdded}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition flex items-center gap-1 ${
+                              isAlreadyAdded
+                                ? 'bg-neutral-900 border-neutral-800 text-neutral-600 cursor-not-allowed'
+                                : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:border-[#39FF14] hover:text-white cursor-pointer'
+                            }`}
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: COLOR_OPTIONS[presetCol]?.hex }}
+                            />
+                            <span>{presetCol}</span>
+                            {!isAlreadyAdded && <Plus className="w-2.5 h-2.5 text-[#39FF14]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Color Input */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <input
+                        type="text"
+                        placeholder="Custom Color Name (e.g. Sage)"
+                        value={customColorName[prod.id] || ''}
+                        onChange={(e) =>
+                          setCustomColorName({ ...customColorName, [prod.id]: e.target.value })
+                        }
+                        className="flex-1 px-2.5 py-1 bg-neutral-900 border border-neutral-800 rounded text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-[#39FF14]"
+                      />
+                      <input
+                        type="color"
+                        value={customColorHex[prod.id] || '#336699'}
+                        onChange={(e) =>
+                          setCustomColorHex({ ...customColorHex, [prod.id]: e.target.value })
+                        }
+                        className="w-8 h-7 bg-transparent border-0 cursor-pointer rounded"
+                        title="Pick color hex"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const name = (customColorName[prod.id] || '').trim();
+                          if (name && !prod.colors.includes(name)) {
+                            onUpdateProduct(prod.id, { colors: [...prod.colors, name] });
+                            setCustomColorName({ ...customColorName, [prod.id]: '' });
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-neutral-800 hover:bg-[#39FF14] text-white hover:text-black rounded text-[11px] font-mono font-bold transition cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Available Sizes Editor */}
+                <div className="space-y-2 pt-2 border-t border-neutral-800/80">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-neutral-300 flex items-center gap-1">
+                      <Ruler className="w-3 h-3 text-[#39FF14]" />
+                      <span>Available Sizes ({prod.sizes.length})</span>
+                    </label>
+                    <span className="text-[10px] text-neutral-500 font-mono">Manage garment size scale</span>
+                  </div>
+
+                  {/* Active Size Chips with Remove 'x' */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {prod.sizes.map((sz) => (
+                      <span
+                        key={sz}
+                        className="px-2 py-1 rounded bg-neutral-800 border border-neutral-600 text-white text-[11px] font-mono font-bold flex items-center gap-1.5 shadow"
+                      >
+                        <span>{sz}</span>
+                        {prod.sizes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const remaining = prod.sizes.filter((s) => s !== sz);
+                              onUpdateProduct(prod.id, { sizes: remaining });
+                            }}
+                            className="text-neutral-400 hover:text-red-400 cursor-pointer ml-0.5"
+                            title="Remove size"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Add Size Presets & Custom Input */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] text-neutral-400 font-mono block">Standard Sizes:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {(prod.kind === 'kids'
+                        ? ['2Y', '4Y', '6Y', '8Y', '10Y', '12Y']
+                        : ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']
+                      ).map((stdSz) => {
+                        const isAdded = prod.sizes.includes(stdSz);
+                        return (
+                          <button
+                            key={stdSz}
+                            type="button"
+                            onClick={() => {
+                              if (!isAdded) {
+                                onUpdateProduct(prod.id, { sizes: [...prod.sizes, stdSz] });
+                              }
+                            }}
+                            disabled={isAdded}
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono border transition flex items-center gap-1 ${
+                              isAdded
+                                ? 'bg-neutral-900 border-neutral-800 text-neutral-600 cursor-not-allowed'
+                                : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:border-[#39FF14] hover:text-white cursor-pointer'
+                            }`}
+                          >
+                            <span>{stdSz}</span>
+                            {!isAdded && <Plus className="w-2.5 h-2.5 text-[#39FF14]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Size Input */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <input
+                        type="text"
+                        placeholder="Custom Size (e.g. Oversized L, 5XL)"
+                        value={customSizeInput[prod.id] || ''}
+                        onChange={(e) =>
+                          setCustomSizeInput({ ...customSizeInput, [prod.id]: e.target.value })
+                        }
+                        className="flex-1 px-2.5 py-1 bg-neutral-900 border border-neutral-800 rounded text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-[#39FF14]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const sizeVal = (customSizeInput[prod.id] || '').trim().toUpperCase();
+                          if (sizeVal && !prod.sizes.includes(sizeVal)) {
+                            onUpdateProduct(prod.id, { sizes: [...prod.sizes, sizeVal] });
+                            setCustomSizeInput({ ...customSizeInput, [prod.id]: '' });
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-neutral-800 hover:bg-[#39FF14] text-white hover:text-black rounded text-[11px] font-mono font-bold transition cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Size</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

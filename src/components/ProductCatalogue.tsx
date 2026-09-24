@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { COLOR_OPTIONS, SALAPEED_BRAND } from '../data/mockData';
+import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
 import { formatBHD } from '../lib/store';
 import { ArrowRight, Sparkles, ShieldCheck, Layers, Scissors, Check, Eye, LayoutGrid, MessageCircle, Instagram, Globe } from 'lucide-react';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
 import { BrochurePedestalCard } from './BrochurePedestalCard';
 
 interface ProductCatalogueProps {
@@ -183,13 +182,12 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
                   <div className="w-full aspect-[4/3] rounded-xl relative overflow-hidden bg-gradient-to-b from-[#181b22] to-[#0e1014] border border-neutral-800 p-2 flex items-center justify-center group-hover:border-neutral-700 transition">
                     <div className="absolute inset-0 sp-stripes-subtle opacity-30 pointer-events-none" />
 
-                    {/* Render the realistic vector hoodie illustration */}
+                    {/* Render the authentic real hoodie photography */}
                     <div className="w-full h-full max-h-[95%] flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300 ease-out">
-                      <RealisticHoodieGraphic
-                        imageType={product.imageType}
-                        colorName={currentColor}
-                        side="front"
-                        className="w-full h-full"
+                      <img
+                        src={getHoodiePhoto(product.imageType, currentColor, 'front', product)}
+                        alt={`${product.name} in ${currentColor}`}
+                        className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)]"
                       />
                     </div>
 

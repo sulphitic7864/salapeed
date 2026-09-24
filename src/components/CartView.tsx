@@ -2,8 +2,7 @@ import React from 'react';
 import { CartItem } from '../types';
 import { formatBHD } from '../lib/store';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
-import { COLOR_OPTIONS } from '../data/mockData';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
+import { COLOR_OPTIONS, getHoodiePhoto } from '../data/mockData';
 
 interface CartViewProps {
   cart: CartItem[];
@@ -74,14 +73,12 @@ export const CartView: React.FC<CartViewProps> = ({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  {/* Realistic Hoodie Thumbnail */}
+                  {/* Real Hoodie Thumbnail */}
                   <div className="w-14 h-16 rounded-md relative flex items-center justify-center border border-neutral-700/60 bg-[#0d0f13] p-1 shrink-0 overflow-hidden">
-                    <RealisticHoodieGraphic
-                      imageType={item.imageType}
-                      colorName={item.color}
-                      side="front"
-                      className="w-full h-full"
-                      highlightTexture={false}
+                    <img
+                      src={getHoodiePhoto(item.imageType, item.color, 'front')}
+                      alt={item.productName}
+                      className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     />
                   </div>
 

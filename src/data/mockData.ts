@@ -1,4 +1,4 @@
-import { Product, ColorOption, PrintZone, GraphicItem, AdminConfig } from '../types';
+import { Product, ColorOption, PrintZone, GraphicItem, AdminConfig, GarmentSide } from '../types';
 
 export const COLOR_OPTIONS: Record<string, ColorOption> = {
   Navy: { name: 'Navy', hex: '#1d2a44', ink: '#f0f4f8' },
@@ -26,51 +26,23 @@ export const KIDS_SIZES = ['2–3 Years', '4–5 Years', '6–7 Years', '8–9 Y
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
-    id: 'zipper-hoodie',
-    name: 'Hoodie Zipper',
-    brochureTitle: 'HOODIE ZIPPER',
-    desc: 'Heavyweight 380 GSM full-zip fleece hoodie with dual split kangaroo pockets, double-lined hood, and smooth metallic front zipper.',
-    kind: 'adult',
-    basePrice: 11.5,
-    colors: ['Navy', 'Black', 'Heather Grey', 'Red'],
-    sizes: ADULT_SIZES,
-    imageType: 'zipper',
-    photoUrl: '/images/hoodie-zipper-navy.jpg',
-    colorPhotos: {
-      Navy: '/images/hoodie-zipper-navy.jpg',
-      Black: '/images/hoodie-zipper-black.jpg',
-      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
-    },
-    brochurePage: 1,
-    sizeChart: {
-      headers: ['Size', 'Shoulder (cm)', 'Chest (cm)', 'Length (cm)'],
-      rows: [
-        { size: 'XS', cells: ['42', '48', '62'] },
-        { size: 'S', cells: ['44', '50', '64'] },
-        { size: 'M', cells: ['46', '54', '68'] },
-        { size: 'L', cells: ['50', '58', '70'] },
-        { size: 'XL', cells: ['52', '60', '72'] },
-        { size: 'XXL', cells: ['56', '64', '76'] },
-      ],
-    },
-  },
-  {
     id: 'fleece-hoodie',
     name: 'Fleece Hoodies',
     brochureTitle: 'FLEECE HOODIES',
     desc: 'Classic street pullover hoodie with kangaroo pouch pocket, double-layer drawstring hood, and 380 GSM brushed fleece warmth.',
     kind: 'adult',
     basePrice: 9.5,
-    colors: ['Charcoal', 'Navy', 'White', 'Black', 'Red'],
+    colors: ['Charcoal', 'Black', 'Navy', 'Heather Grey', 'Red', 'White'],
     sizes: ADULT_SIZES,
     imageType: 'pullover',
     photoUrl: '/images/fleece-hoodie-charcoal.jpg',
     colorPhotos: {
       Charcoal: '/images/fleece-hoodie-charcoal.jpg',
-      White: '/images/fleece-hoodie-grey.jpg',
-      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
-      Navy: '/images/hoodie-zipper-navy.jpg',
       Black: '/images/hoodie-zipper-black.jpg',
+      Navy: '/images/hoodie-zipper-navy.jpg',
+      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
+      White: '/images/fleece-hoodie-grey.jpg',
+      Red: '/images/fleece-hoodie-red.jpg',
     },
     brochurePage: 3,
     sizeChart: {
@@ -86,28 +58,32 @@ export const INITIAL_PRODUCTS: Product[] = [
     },
   },
   {
-    id: 'fleece-jacket',
-    name: 'Fleece Jacket',
-    brochureTitle: 'FLEECE JACKET',
-    desc: 'Stand-up mock collar athletic fleece jacket with full front metal zipper and zippered side hand pockets with red accent pulls.',
+    id: 'zipper-hoodie',
+    name: 'Hoodie Zipper',
+    brochureTitle: 'HOODIE ZIPPER',
+    desc: 'Heavyweight 380 GSM full-zip fleece hoodie with dual split kangaroo pockets, double-lined hood, and smooth metallic front zipper.',
     kind: 'adult',
-    basePrice: 13.0,
-    colors: ['Black'],
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    imageType: 'jacket',
-    photoUrl: '/images/fleece-jacket-black.jpg',
+    basePrice: 11.5,
+    colors: ['Navy', 'Black', 'Heather Grey', 'Red'],
+    sizes: ADULT_SIZES,
+    imageType: 'zipper',
+    photoUrl: '/images/hoodie-zipper-navy.jpg',
     colorPhotos: {
-      Black: '/images/fleece-jacket-black.jpg',
+      Navy: '/images/hoodie-zipper-navy.jpg',
+      Black: '/images/hoodie-zipper-black.jpg',
+      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
+      Red: '/images/fleece-hoodie-red.jpg',
     },
-    brochurePage: 6,
+    brochurePage: 1,
     sizeChart: {
       headers: ['Size', 'Shoulder (cm)', 'Chest (cm)', 'Length (cm)'],
       rows: [
-        { size: 'S', cells: ['45', '52', '66'] },
-        { size: 'M', cells: ['48', '56', '69'] },
-        { size: 'L', cells: ['51', '60', '72'] },
-        { size: 'XL', cells: ['54', '63', '74'] },
-        { size: 'XXL', cells: ['57', '66', '77'] },
+        { size: 'XS', cells: ['42', '48', '62'] },
+        { size: 'S', cells: ['44', '50', '64'] },
+        { size: 'M', cells: ['46', '54', '68'] },
+        { size: 'L', cells: ['50', '58', '70'] },
+        { size: 'XL', cells: ['52', '60', '72'] },
+        { size: 'XXL', cells: ['56', '64', '76'] },
       ],
     },
   },
@@ -118,13 +94,17 @@ export const INITIAL_PRODUCTS: Product[] = [
     desc: 'Cozy, durable kids fleece pullover hoodie for ages 2 to 12 years with kangaroo pocket and reinforced seams.',
     kind: 'kids',
     basePrice: 7.5,
-    colors: ['Charcoal', 'Black', 'Navy', 'White'],
+    colors: ['Charcoal', 'Black', 'Navy', 'Heather Grey', 'Red', 'White'],
     sizes: ['2–3 Years', '4–5 Years', '6–7 Years', '8–9 Years', '10–11 Years', '12 Years'],
     imageType: 'kids',
     photoUrl: '/images/kids-hoodie-charcoal.jpg',
     colorPhotos: {
       Charcoal: '/images/kids-hoodie-charcoal.jpg',
-      Black: '/images/kids-hoodie-charcoal.jpg',
+      Black: '/images/hoodie-zipper-black.jpg',
+      Navy: '/images/hoodie-zipper-navy.jpg',
+      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
+      White: '/images/fleece-hoodie-grey.jpg',
+      Red: '/images/fleece-hoodie-red.jpg',
     },
     brochurePage: 7,
     sizeChart: {
@@ -142,46 +122,98 @@ export const INITIAL_PRODUCTS: Product[] = [
 ];
 
 export const PRINT_ZONES: PrintZone[] = [
-  // Back
-  {
-    id: 'back-full',
-    name: 'Full Back',
-    side: 'back',
-    boundingBox: { top: 12, left: 22, width: 56, height: 66 },
-  },
-  {
-    id: 'back-upper',
-    name: 'Upper Back',
-    side: 'back',
-    boundingBox: { top: 14, left: 25, width: 50, height: 28 },
-  },
-  // Front
+  // Front View Print Zones (accurately aligned to chest on HD hoodie photos, excluding kangaroo pocket & reserved logo badge)
   {
     id: 'front-centre',
-    name: 'Centre Chest',
+    name: 'Centre Chest (Excl. Logo Reserve)',
     side: 'front',
-    boundingBox: { top: 22, left: 28, width: 44, height: 26 },
+    boundingBox: { top: 31, left: 30, width: 40, height: 24 },
   },
   {
     id: 'front-left',
-    name: 'Left Chest (Small)',
+    name: 'Left Chest (Reserved Logo Area)',
     side: 'front',
-    boundingBox: { top: 22, left: 56, width: 20, height: 16 },
+    boundingBox: { top: 31, left: 57, width: 18, height: 17 },
   },
-  // Sleeve
+  {
+    id: 'front-right',
+    name: 'Right Chest (Secondary Logo Area)',
+    side: 'front',
+    boundingBox: { top: 31, left: 25, width: 18, height: 17 },
+  },
+  // Back View Print Zones (broad smooth panel excluding collar and hem)
+  {
+    id: 'back-full',
+    name: 'Full Back (Primary Safe Zone)',
+    side: 'back',
+    boundingBox: { top: 25, left: 26, width: 48, height: 48 },
+  },
+  {
+    id: 'back-upper',
+    name: 'Upper Back (Shoulder Span)',
+    side: 'back',
+    boundingBox: { top: 25, left: 28, width: 44, height: 22 },
+  },
+  // Sleeve View Print Zones
   {
     id: 'sleeve-left',
-    name: 'Left Sleeve',
+    name: 'Sleeve Length (Excl. Cuff)',
     side: 'sleeve',
-    boundingBox: { top: 20, left: 30, width: 40, height: 60 },
-  },
-  {
-    id: 'sleeve-right',
-    name: 'Right Sleeve',
-    side: 'sleeve',
-    boundingBox: { top: 20, left: 30, width: 40, height: 60 },
+    boundingBox: { top: 24, left: 32, width: 36, height: 50 },
   },
 ];
+
+/**
+ * Returns genuine high-definition photography for the requested hoodie, color, and side view.
+ */
+export function getHoodiePhoto(
+  imageType: string,
+  colorName: string,
+  side: GarmentSide,
+  product?: Product
+): string {
+  // High-Definition Back Views
+  if (side === 'back') {
+    if (imageType === 'zipper') {
+      return '/images/hd-zipper-back.jpg';
+    }
+    return '/images/hd-pullover-back.jpg';
+  }
+
+  // High-Definition Sleeve Profile
+  if (side === 'sleeve') {
+    return '/images/hoodie-sleeve-view.jpg';
+  }
+
+  // Front View - High-Definition Photos
+  if (imageType === 'zipper') {
+    if (colorName === 'Black') return '/images/hd-zipper-front.jpg';
+    if (colorName === 'Red') return '/images/fleece-hoodie-red.jpg';
+    if (colorName === 'Heather Grey') return '/images/fleece-hoodie-grey.jpg';
+    return '/images/hoodie-zipper-navy.jpg';
+  }
+
+  if (imageType === 'kids') {
+    if (colorName === 'Black') return '/images/hd-zipper-front.jpg';
+    if (colorName === 'Navy') return '/images/hoodie-zipper-navy.jpg';
+    if (colorName === 'Red') return '/images/fleece-hoodie-red.jpg';
+    if (colorName === 'Heather Grey' || colorName === 'White') return '/images/fleece-hoodie-grey.jpg';
+    return '/images/kids-hoodie-charcoal.jpg';
+  }
+
+  // Pullover Front Views
+  if (colorName === 'Charcoal') return '/images/hd-pullover-front.jpg';
+  if (colorName === 'Black') return '/images/hd-zipper-front.jpg';
+  if (colorName === 'Heather Grey' || colorName === 'White') return '/images/fleece-hoodie-grey.jpg';
+  if (colorName === 'Navy') return '/images/hoodie-zipper-navy.jpg';
+  if (colorName === 'Red') return '/images/fleece-hoodie-red.jpg';
+
+  if (product?.colorPhotos && product.colorPhotos[colorName]) {
+    return product.colorPhotos[colorName];
+  }
+
+  return '/images/hd-pullover-front.jpg';
+}
 
 export const INITIAL_CATEGORIES = [
   'Cars',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product, GarmentSide } from '../types';
-import { COLOR_OPTIONS, SALAPEED_BRAND } from '../data/mockData';
+import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
 import { formatBHD } from '../lib/store';
 import {
   ArrowLeft,
@@ -14,9 +14,8 @@ import {
   Scissors,
   Camera,
   Layers as LayersIcon,
-  MessageCircle,
+  Phone,
 } from 'lucide-react';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
 
 interface ProductDetailProps {
   product: Product;
@@ -121,13 +120,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center">
-                  <RealisticHoodieGraphic
-                    imageType={product.imageType}
-                    colorName={selectedColor}
-                    side={previewSide}
-                    className="w-full h-full"
-                    highlightTexture={true}
+                <div className="w-full h-full flex flex-col items-center justify-center p-2">
+                  <img
+                    src={getHoodiePhoto(product.imageType, selectedColor, previewSide, product)}
+                    alt={`${product.name} - ${previewSide} view`}
+                    className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.6)] animate-fadeIn pointer-events-none select-none"
                   />
 
                   {/* Side Angle Flipper underneath when in vector mode */}
@@ -353,13 +350,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
               <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 pt-1">
                 <span>Fulfilled by Salapeed Workshop Bahrain</span>
                 <a
-                  href={SALAPEED_BRAND.whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-400 hover:underline flex items-center gap-1"
+                  href={`tel:${SALAPEED_BRAND.phone.replace(/[^0-9+]/g, '')}`}
+                  className="text-neutral-300 hover:text-white flex items-center gap-1 hover:underline"
                 >
-                  <MessageCircle className="w-3 h-3" />
-                  <span>WhatsApp: {SALAPEED_BRAND.phone}</span>
+                  <Phone className="w-3 h-3 text-[#39FF14]" />
+                  <span>Call: {SALAPEED_BRAND.phone}</span>
                 </a>
               </div>
             </div>

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { Product, PlantedElement, PrintZone, GarmentSide } from '../types';
-import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS } from '../data/mockData';
+import React, { useState, useRef } from 'react';
+import { Product, PlantedElement, PrintZone, GarmentSide, GraphicItem } from '../types';
+import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS, INITIAL_GRAPHICS } from '../data/mockData';
 import { GarmentMockup } from './GarmentMockup';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
 import {
   RotateCcw,
   ZoomIn,
@@ -35,10 +34,11 @@ interface PlacementEditorProps {
   onSelectColor?: (color: string) => void;
   onSelectSize?: (size: string) => void;
   onUpdateElements: (elements: PlantedElement[]) => void;
-  onOpenLibrary: () => void;
+  onOpenLibrary: (side?: GarmentSide, zoneName?: string) => void;
   onApproveDesign: () => void;
   onBack: () => void;
   printFee: number;
+  onOpenGarmentModal?: () => void;
 }
 
 export const PlacementEditor: React.FC<PlacementEditorProps> = ({
@@ -55,11 +55,16 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   onApproveDesign,
   onBack,
   printFee,
+  onOpenGarmentModal,
 }) => {
-  const [currentSide, setCurrentSide] = useState<GarmentSide>('back');
+  // Default to front view or the first element's side
+  const [currentSide, setCurrentSide] = useState<GarmentSide>(
+    elements[0]?.side || 'front'
+  );
   const availableZones = PRINT_ZONES.filter((z) => z.side === currentSide);
   const [currentZone, setCurrentZone] = useState<PrintZone>(availableZones[0] || PRINT_ZONES[0]);
   const [showGarmentSelector, setShowGarmentSelector] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Active element selection
   const [selectedElementId, setSelectedElementId] = useState<string>(
@@ -131,6 +136,25 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
     setSelectedElementId(newElem.id);
   };
 
+  const handleAddGraphicItem = (graphic: GraphicItem, x = 50, y = 50) => {
+    const newElem: PlantedElement = {
+      id: `elem-graphic-${Date.now()}`,
+      side: currentSide,
+      zone: currentZone.name,
+      type: 'graphic',
+      graphicId: graphic.id,
+      graphicName: graphic.name,
+      svgContent: graphic.svgContent,
+      imageUrl: graphic.previewUrl,
+      x,
+      y,
+      scale: 1.0,
+      rotation: 0,
+    };
+    onUpdateElements([...elements, newElem]);
+    setSelectedElementId(newElem.id);
+  };
+
   const handleDuplicateElement = (el: PlantedElement) => {
     const cloned: PlantedElement = {
       ...el,
@@ -171,6 +195,37 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
     setSelectedElementId(newElem.id);
   };
 
+  // Direct drop handler when graphic is dropped onto garment
+  const handleDropGraphic = (graphic: GraphicItem, x: number, y: number) => {
+    handleAddGraphicItem(graphic, x, y);
+  };
+
+  // Handle direct file upload via file picker
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG, SVG).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const result = uploadEvent.target?.result as string;
+      if (result) {
+        const img = new Image();
+        img.onload = () => {
+          const isLowRes = img.naturalWidth < 800 || img.naturalHeight < 800;
+          handleDropUpload(result, file.name, isLowRes);
+        };
+        img.src = result;
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   // Check if active element is positioned near bounds
   const isOverflowing =
     selectedElement &&
@@ -178,12 +233,26 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       selectedElement.x > 88 ||
       selectedElement.y < 12 ||
       selectedElement.y > 88 ||
-      selectedElement.scale > 1.5);
+      selectedElement.scale > 1.6);
 
   const totalPrice = product.basePrice + printFee;
 
+  // Filter out any non-hoodie products from blanks list
+  const validHoodieProducts = allProducts.filter(
+    (p) => p.id !== 'fleece-jacket' && p.imageType !== 'jacket'
+  );
+
   return (
     <div className="space-y-5 pb-16">
+      {/* Hidden file input for direct artwork upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+
       {/* Top Header & Breadcrumb */}
       <div className="flex items-center justify-between">
         <button
@@ -204,28 +273,21 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. APPARENT REALISTIC HOODIE SELECTION BAR (Switch Garment & Color) */}
+      {/* 1. REALISTIC HOODIE SELECTION BAR (Switch Garment & Color) */}
       {/* ========================================================================= */}
       <div className="blueprint-card p-3.5 bg-gradient-to-r from-[#121419] via-[#161920] to-[#121419] border-neutral-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-11 h-11 rounded-lg bg-black/60 border border-neutral-700 p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-              {product.colorPhotos?.[colorName] || product.photoUrl ? (
-                <img
-                  src={product.colorPhotos?.[colorName] || product.photoUrl}
-                  alt={product.name}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                />
-              ) : (
-                <RealisticHoodieGraphic
-                  imageType={product.imageType}
-                  colorName={colorName}
-                  side="front"
-                  className="w-full h-full"
-                  highlightTexture={false}
-                />
-              )}
+            <div className="w-12 h-12 rounded-lg bg-black/70 border border-neutral-700 p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+              <img
+                src={
+                  product.colorPhotos?.[colorName] ||
+                  product.photoUrl ||
+                  '/images/fleece-hoodie-charcoal.jpg'
+                }
+                alt={product.name}
+                className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -244,30 +306,49 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => setShowGarmentSelector(!showGarmentSelector)}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-neutral-700"
-          >
-            <span>Change Hoodie / Color</span>
-            {showGarmentSelector ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5">
+            {onOpenGarmentModal && (
+              <button
+                type="button"
+                onClick={onOpenGarmentModal}
+                className="px-2.5 py-1.5 rounded-lg bg-[#39FF14]/15 hover:bg-[#39FF14]/25 text-[#39FF14] text-xs font-semibold flex items-center gap-1 transition cursor-pointer border border-[#39FF14]/40"
+                title="Change Age, Type, and Color in modal"
+              >
+                <span>Reconfigure Garment</span>
+              </button>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={() => setShowGarmentSelector(!showGarmentSelector)}
+              className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-neutral-700"
+            >
+              <span>Quick Switch</span>
+              {showGarmentSelector ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* EXPANDED HOODIE BLANK & COLOR SELECTOR DRAWER */}
-        {showGarmentSelector && allProducts.length > 0 && (
+        {showGarmentSelector && validHoodieProducts.length > 0 && (
           <div className="mt-3.5 pt-3.5 border-t border-neutral-800/80 space-y-3.5 animate-fadeIn">
-            {/* 4 Hoodie Silhouettes Grid */}
+            {/* Real Hoodie Blanks Grid */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider block">
                 Select Blank Silhouette:
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {allProducts.map((p) => {
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {validHoodieProducts.map((p) => {
                   const isCur = p.id === product.id;
+                  const thumbUrl =
+                    p.colorPhotos?.[colorName] ||
+                    p.photoUrl ||
+                    '/images/fleece-hoodie-charcoal.jpg';
+
                   return (
                     <div
                       key={p.id}
@@ -277,31 +358,20 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                           onSelectColor(p.colors[0] || 'Black');
                         }
                       }}
-                      className={`p-2 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-between ${
+                      className={`p-2.5 rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-between ${
                         isCur
                           ? 'bg-[#39FF14]/10 border-[#39FF14] shadow-[0_0_12px_rgba(57,255,20,0.2)]'
                           : 'bg-neutral-900/80 border-neutral-800 hover:border-neutral-700'
                       }`}
                     >
-                      <div className="w-14 h-14 relative flex items-center justify-center my-0.5 overflow-hidden">
-                        {p.photoUrl ? (
-                          <img
-                            src={p.photoUrl}
-                            alt={p.name}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-contain filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.7)]"
-                          />
-                        ) : (
-                          <RealisticHoodieGraphic
-                            imageType={p.imageType}
-                            colorName={p.colors.includes(colorName) ? colorName : p.colors[0] || 'Black'}
-                            side="front"
-                            className="w-full h-full"
-                            highlightTexture={false}
-                          />
-                        )}
+                      <div className="w-16 h-16 relative flex items-center justify-center my-0.5 overflow-hidden">
+                        <img
+                          src={thumbUrl}
+                          alt={p.name}
+                          className="w-full h-full object-contain filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
+                        />
                       </div>
-                      <span className="text-[11px] font-bold text-white uppercase truncate w-full">
+                      <span className="text-[11px] font-bold text-white uppercase truncate w-full mt-1">
                         {p.brochureTitle || p.name}
                       </span>
                       <span className="text-[10px] font-mono text-[#39FF14] mt-0.5">
@@ -375,12 +445,15 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           activeZone={currentZone}
           elements={elements}
           selectedElementId={selectedElement?.id || null}
+          product={product}
           onSelectElement={(id) => {
             setSelectedElementId(id);
             const found = elements.find((e) => e.id === id);
             if (found && found.side !== currentSide) {
               setCurrentSide(found.side);
-              const z = PRINT_ZONES.find((pz) => pz.name === found.zone) || PRINT_ZONES[0];
+              const z =
+                PRINT_ZONES.find((pz) => pz.name === found.zone && pz.side === found.side) ||
+                PRINT_ZONES[0];
               setCurrentZone(z);
             }
           }}
@@ -389,9 +462,10 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           onUpdateElementRotation={handleUpdateRotation}
           onDeleteElement={handleDeleteElement}
           onDropUpload={handleDropUpload}
+          onDropGraphic={handleDropGraphic}
         />
 
-        {/* Improved Drag & Drop Quick Hints */}
+        {/* Drag & Drop Quick Guidance Strip */}
         <div className="flex flex-wrap items-center justify-center gap-3 mt-3 text-[11px] text-neutral-400 font-mono text-center">
           <span className="inline-flex items-center gap-1 text-neutral-300">
             <Move className="w-3.5 h-3.5 text-[#39FF14]" />
@@ -400,18 +474,71 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           <span className="text-neutral-600">•</span>
           <span className="inline-flex items-center gap-1 text-neutral-300">
             <Maximize2 className="w-3.5 h-3.5 text-[#39FF14]" />
-            <span>Drag corners to scale</span>
+            <span>Corner handles to resize</span>
           </span>
           <span className="text-neutral-600">•</span>
           <span className="inline-flex items-center gap-1 text-neutral-300">
             <RotateCcw className="w-3.5 h-3.5 text-[#39FF14]" />
-            <span>Drag top handle to rotate</span>
+            <span>Top handle to rotate</span>
           </span>
           <span className="text-neutral-600">•</span>
           <span className="inline-flex items-center gap-1 text-[#39FF14]">
             <Upload className="w-3.5 h-3.5" />
             <span>Drop image files onto hoodie</span>
           </span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* QUICK DRAG-AND-DROP ARTWORK SHELF */}
+      {/* ========================================================================= */}
+      <div className="p-3 bg-[#12151c] rounded-xl border border-neutral-800 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#39FF14]" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">
+              Quick Art & Logos (Drag or Click to Plant)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-[11px] font-mono text-neutral-300 hover:text-white flex items-center gap-1 bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded transition cursor-pointer"
+            >
+              <Upload className="w-3 h-3 text-[#39FF14]" />
+              <span>Upload Image</span>
+            </button>
+            <button
+              onClick={() => onOpenLibrary(currentSide, currentZone.name)}
+              className="text-[11px] font-mono text-[#39FF14] hover:underline cursor-pointer"
+            >
+              Browse All (150+) →
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+          {INITIAL_GRAPHICS.slice(0, 6).map((g) => (
+            <div
+              key={g.id}
+              draggable={true}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/json', JSON.stringify(g));
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              onClick={() => handleAddGraphicItem(g)}
+              className="group p-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-[#39FF14]/60 flex flex-col items-center justify-center text-center cursor-grab active:cursor-grabbing transition shadow-sm"
+              title={`Drag onto hoodie or click to add ${g.name}`}
+            >
+              <div
+                className="w-10 h-10 flex items-center justify-center group-hover:scale-110 transition pointer-events-none"
+                dangerouslySetInnerHTML={{ __html: g.svgContent || '' }}
+              />
+              <span className="text-[10px] text-neutral-300 font-medium truncate w-full mt-1">
+                {g.name}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -424,7 +551,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
             Garment Placement Angle
           </label>
           <span className="text-[10px] font-mono text-neutral-500">
-            Live 3D-perspective views
+            High-Resolution Studio Views
           </span>
         </div>
 
@@ -459,7 +586,9 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
         </div>
       </div>
 
-      {/* 4. Print Zone Selector Chips for Current Side */}
+      {/* ========================================================================= */}
+      {/* 4. PRINT ZONE SELECTOR CHIPS */}
+      {/* ========================================================================= */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">
@@ -489,7 +618,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
         <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>
-            Artwork boundary is close to safe edge. The Bahrain print workshop will calibrate alignment before curing.
+            Artwork boundary is close to edge. The Salapeed print workshop will align margins before curing.
           </span>
         </div>
       )}
@@ -507,7 +636,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={onOpenLibrary}
+              onClick={() => onOpenLibrary(currentSide, currentZone.name)}
               className="px-2.5 py-1 bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-200 font-medium rounded-lg border border-neutral-700 flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-[#39FF14]" />
@@ -534,7 +663,9 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                   setSelectedElementId(el.id);
                   if (el.side !== currentSide) {
                     setCurrentSide(el.side);
-                    const z = PRINT_ZONES.find((pz) => pz.name === el.zone) || PRINT_ZONES[0];
+                    const z =
+                      PRINT_ZONES.find((pz) => pz.name === el.zone && pz.side === el.side) ||
+                      PRINT_ZONES[0];
                     setCurrentZone(z);
                   }
                 }}
@@ -570,18 +701,16 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
-                  {elements.length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteElement(el.id);
-                      }}
-                      className="p-1 text-neutral-500 hover:text-red-400 rounded transition cursor-pointer"
-                      title="Remove layer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteElement(el.id);
+                    }}
+                    className="p-1 text-neutral-500 hover:text-red-400 rounded transition cursor-pointer"
+                    title="Remove layer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );
@@ -601,14 +730,14 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleUpdatePosition(selectedElement.id, 50, 50)}
-                className="px-2 py-0.5 text-[10px] font-mono rounded bg-neutral-800 text-[#39FF14] hover:bg-neutral-700 cursor-pointer flex items-center gap-1"
+                className="px-2 py-0.5 text-[10px] font-mono rounded bg-neutral-800 text-[#39FF14] hover:bg-neutral-700 cursor-pointer flex items-center gap-1 font-bold"
                 title="Center Horizontally & Vertically"
               >
                 <AlignCenter className="w-3 h-3" />
                 <span>Center (50%)</span>
               </button>
               <button
-                onClick={onOpenLibrary}
+                onClick={() => onOpenLibrary(currentSide, currentZone.name)}
                 className="text-xs text-[#39FF14] hover:underline cursor-pointer"
               >
                 Swap Graphic
@@ -623,14 +752,14 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                 <ZoomIn className="w-3.5 h-3.5 text-neutral-500" />
                 <span>Size / Scale</span>
               </span>
-              <span className="font-mono text-[#39FF14]">
+              <span className="font-mono text-[#39FF14] font-bold">
                 {Math.round(selectedElement.scale * 100)}%
               </span>
             </div>
             <input
               type="range"
-              min="0.5"
-              max="1.8"
+              min="0.4"
+              max="2.0"
               step="0.05"
               value={selectedElement.scale}
               onChange={(e) => handleUpdateScale(selectedElement.id, parseFloat(e.target.value))}
@@ -645,7 +774,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                 <RotateCcw className="w-3.5 h-3.5 text-neutral-500" />
                 <span>Angle / Rotation</span>
               </span>
-              <span className="font-mono text-neutral-300">{selectedElement.rotation}°</span>
+              <span className="font-mono text-neutral-300 font-bold">{selectedElement.rotation}°</span>
             </div>
             <div className="flex items-center gap-3">
               <input
@@ -735,6 +864,18 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
               </div>
             </div>
           )}
+
+          {/* Quick Delete Element Action */}
+          <div className="pt-2 border-t border-neutral-800/80">
+            <button
+              type="button"
+              onClick={() => handleDeleteElement(selectedElement.id)}
+              className="w-full py-2 px-3 bg-red-950/40 hover:bg-red-900/60 border border-red-800/80 hover:border-red-500 text-red-300 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              <span>Delete Design Element</span>
+            </button>
+          </div>
         </div>
       )}
 

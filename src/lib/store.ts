@@ -107,7 +107,7 @@ const SAMPLE_ORDERS: Order[] = [
     customerName: 'Fatima Bucheeri',
     customerPhone: '+973 3611 9822',
     customerAddress: 'Flat 302, Building 881, Road 1421, Riffa Views',
-    paymentMethod: 'Cash on Delivery',
+    paymentMethod: 'BenefitPay',
     items: [
       {
         id: 'item-demo-2',
@@ -331,7 +331,7 @@ class Store {
     customerName: string;
     customerPhone: string;
     customerAddress: string;
-    paymentMethod: 'Benefit Transfer' | 'Cash on Delivery';
+    paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
   }): Order {
     const subtotal = this.cart.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
