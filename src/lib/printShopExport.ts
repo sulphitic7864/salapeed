@@ -65,9 +65,17 @@ export function buildPrintShopPackage(order: Order): PrintShopPackage {
       quantity: item.qty,
       unitPrice: item.unitPrice,
       hdMockups: {
-        front: `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'front')}`,
-        back: `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'back')}`,
-        sleeve: `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'sleeve')}`,
+        front:
+          item.designPreviews?.front ||
+          (item.designPreviewSide === 'front' ? item.designPreview : undefined) ||
+          `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'front')}`,
+        back:
+          item.designPreviews?.back ||
+          (item.designPreviewSide === 'back' ? item.designPreview : undefined) ||
+          `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'back')}`,
+        sleeve:
+          item.designPreviews?.sleeve ||
+          `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'sleeve')}`,
       },
       printPlacements: (item.placements || []).map((el: PlantedElement) => ({
         side: el.side,

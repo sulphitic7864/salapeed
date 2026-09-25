@@ -74,10 +74,20 @@ export const CartView: React.FC<CartViewProps> = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   {/* Real Hoodie Thumbnail */}
-                  <div className="w-14 h-16 rounded-md relative flex items-center justify-center border border-neutral-700/60 bg-[#0d0f13] p-1 shrink-0 overflow-hidden">
+                  <div className="w-28 h-16 rounded-md relative grid grid-cols-3 gap-1 border border-neutral-700/60 bg-[#0d0f13] p-1 shrink-0 overflow-hidden">
                     <img
-                      src={getHoodiePhoto(item.imageType, item.color, 'front')}
-                      alt={item.productName}
+                      src={item.designPreviews?.front || (item.designPreviewSide === 'front' ? item.designPreview : undefined) || getHoodiePhoto(item.imageType, item.color, 'front')}
+                      alt={`${item.productName} front`}
+                      className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                    />
+                    <img
+                      src={item.designPreviews?.back || (item.designPreviewSide === 'back' ? item.designPreview : undefined) || getHoodiePhoto(item.imageType, item.color, 'back')}
+                      alt={`${item.productName} back`}
+                      className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                    />
+                    <img
+                      src={item.designPreviews?.sleeve || getHoodiePhoto(item.imageType, item.color, 'sleeve')}
+                      alt={`${item.productName} sleeve`}
                       className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     />
                   </div>

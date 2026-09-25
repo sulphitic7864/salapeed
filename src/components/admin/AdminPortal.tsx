@@ -552,10 +552,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         key={idx}
                         className="p-2.5 bg-neutral-900/60 rounded-lg border border-neutral-800 flex items-center gap-3"
                       >
-                        <div className="w-12 h-14 bg-black rounded p-1 flex items-center justify-center shrink-0 border border-neutral-800">
+                        <div className="w-24 h-14 bg-black rounded p-1 grid grid-cols-3 gap-1 shrink-0 border border-neutral-800">
                           <img
-                            src={getHoodiePhoto(it.imageType, it.color, 'front')}
-                            alt={it.productName}
+                            src={it.designPreviews?.front || (it.designPreviewSide === 'front' ? it.designPreview : undefined) || getHoodiePhoto(it.imageType, it.color, 'front')}
+                            alt={`${it.productName} front`}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                          <img
+                            src={it.designPreviews?.back || (it.designPreviewSide === 'back' ? it.designPreview : undefined) || getHoodiePhoto(it.imageType, it.color, 'back')}
+                            alt={`${it.productName} back`}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                          <img
+                            src={it.designPreviews?.sleeve || getHoodiePhoto(it.imageType, it.color, 'sleeve')}
+                            alt={`${it.productName} sleeve`}
                             className="max-h-full max-w-full object-contain"
                           />
                         </div>
@@ -1509,8 +1519,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 {specModalOrder.items.map((it, idx) => {
-                  const frontMockup = getHoodiePhoto(it.imageType, it.color, 'front');
-                  const backMockup = getHoodiePhoto(it.imageType, it.color, 'back');
+                  const frontMockup =
+                    it.designPreviews?.front ||
+                    (it.designPreviewSide === 'front' ? it.designPreview : undefined) ||
+                    getHoodiePhoto(it.imageType, it.color, 'front');
+                  const backMockup =
+                    it.designPreviews?.back ||
+                    (it.designPreviewSide === 'back' ? it.designPreview : undefined) ||
+                    getHoodiePhoto(it.imageType, it.color, 'back');
+                  const sleeveMockup =
+                    it.designPreviews?.sleeve ||
+                    `${window.location.origin}${getHoodiePhoto(it.imageType, it.color, 'sleeve')}`;
 
                   return (
                     <div key={idx} className="border-2 border-neutral-300 p-4 rounded-xl space-y-3 bg-[#fafafa]">
@@ -1532,7 +1551,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       </div>
 
                       {/* Visual Front and Back HD Operator Views */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
                         <div className="border border-neutral-300 rounded-lg p-2 text-center bg-white">
                           <div className="text-[10px] font-mono font-bold uppercase text-neutral-500 mb-1">
                             Front View Placement Reference
@@ -1554,6 +1573,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             <img
                               src={backMockup}
                               alt="Back View"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="border border-neutral-300 rounded-lg p-2 text-center bg-white">
+                          <div className="text-[10px] font-mono font-bold uppercase text-neutral-500 mb-1">
+                            Sleeve View Placement Reference
+                          </div>
+                          <div className="h-44 flex items-center justify-center">
+                            <img
+                              src={sleeveMockup}
+                              alt="Sleeve View"
                               className="max-h-full max-w-full object-contain"
                             />
                           </div>

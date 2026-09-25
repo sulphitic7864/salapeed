@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { toJpeg } from 'html-to-image';
 import { Product, PlantedElement, PrintZone, GarmentSide, GraphicItem } from '../types';
 import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS, INITIAL_GRAPHICS, getHoodiePhoto } from '../data/mockData';
 import { GarmentMockup } from './GarmentMockup';
@@ -21,6 +22,7 @@ import {
   Sparkles,
   Upload,
   Copy,
+  Loader2,
 } from 'lucide-react';
 import { formatBHD } from '../lib/store';
 
@@ -35,7 +37,7 @@ interface PlacementEditorProps {
   onSelectSize?: (size: string) => void;
   onUpdateElements: (elements: PlantedElement[]) => void;
   onOpenLibrary: (side?: GarmentSide, zoneName?: string) => void;
-  onApproveDesign: () => void;
+  onApproveDesign: (designPreviews: Partial<Record<GarmentSide, string>>) => void;
   onBack: () => void;
   printFee: number;
   onOpenGarmentModal?: () => void;
@@ -65,6 +67,40 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   const [currentZone, setCurrentZone] = useState<PrintZone>(availableZones[0] || PRINT_ZONES[0]);
   const [showGarmentSelector, setShowGarmentSelector] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const frontPreviewRef = useRef<HTMLDivElement | null>(null);
+  const backPreviewRef = useRef<HTMLDivElement | null>(null);
+  const sleevePreviewRef = useRef<HTMLDivElement | null>(null);
+  const [isCapturingDesign, setIsCapturingDesign] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+
+  const captureMockup = async (mockup: HTMLDivElement | null) => {
+    if (!mockup) throw new Error('Mockup is not ready');
+    const images = Array.from(mockup.querySelectorAll('img'));
+    await Promise.all(images.map((image) => image.decode().catch(() => undefined)));
+    return toJpeg(mockup, {
+      quality: 0.85,
+      cacheBust: true,
+      skipFonts: true,
+      filter: (node) => !(node instanceof HTMLElement && node.dataset.captureIgnore === 'true'),
+    });
+  };
+
+  const handleApproveWithPreview = async () => {
+    setIsCapturingDesign(true);
+    setCaptureError(null);
+    try {
+      const designPreviews = {
+        front: await captureMockup(frontPreviewRef.current),
+        back: await captureMockup(backPreviewRef.current),
+        sleeve: await captureMockup(sleevePreviewRef.current),
+      };
+      onApproveDesign(designPreviews);
+    } catch {
+      setCaptureError('Could not capture the design preview. Please try again.');
+    } finally {
+      setIsCapturingDesign(false);
+    }
+  };
 
   // Active element selection
   const [selectedElementId, setSelectedElementId] = useState<string>(
@@ -241,6 +277,9 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   const validHoodieProducts = allProducts.filter(
     (p) => p.id !== 'fleece-jacket' && p.imageType !== 'jacket'
   );
+  const frontPreviewZone = PRINT_ZONES.find((zone) => zone.side === 'front') || PRINT_ZONES[0];
+  const backPreviewZone = PRINT_ZONES.find((zone) => zone.side === 'back') || PRINT_ZONES[0];
+  const sleevePreviewZone = PRINT_ZONES.find((zone) => zone.side === 'sleeve') || PRINT_ZONES[0];
 
   return (
     <div className="space-y-5 pb-16">
@@ -491,6 +530,52 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       </div>
 
       {/* ========================================================================= */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none"
+        style={{ position: 'fixed', left: '-10000px', top: 0, width: 480 }}
+      >
+        <GarmentMockup
+          imageType={product.imageType}
+          colorName={colorName}
+          side="front"
+          activeZone={frontPreviewZone}
+          elements={elements}
+          selectedElementId={null}
+          product={product}
+          readOnly
+          onSelectElement={() => {}}
+          onUpdateElementPosition={() => {}}
+          onRootElement={(element) => { frontPreviewRef.current = element; }}
+        />
+        <GarmentMockup
+          imageType={product.imageType}
+          colorName={colorName}
+          side="back"
+          activeZone={backPreviewZone}
+          elements={elements}
+          selectedElementId={null}
+          product={product}
+          readOnly
+          onSelectElement={() => {}}
+          onUpdateElementPosition={() => {}}
+          onRootElement={(element) => { backPreviewRef.current = element; }}
+        />
+        <GarmentMockup
+          imageType={product.imageType}
+          colorName={colorName}
+          side="sleeve"
+          activeZone={sleevePreviewZone}
+          elements={elements}
+          selectedElementId={null}
+          product={product}
+          readOnly
+          onSelectElement={() => {}}
+          onUpdateElementPosition={() => {}}
+          onRootElement={(element) => { sleevePreviewRef.current = element; }}
+        />
+      </div>
+
       {/* QUICK DRAG-AND-DROP ARTWORK SHELF */}
       {/* ========================================================================= */}
       <div className="p-3 bg-[#12151c] rounded-xl border border-neutral-800 space-y-2">
@@ -900,12 +985,16 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           </span>
         </div>
 
+        {captureError && (
+          <p role="alert" className="text-xs text-red-400">{captureError}</p>
+        )}
         <button
-          onClick={onApproveDesign}
-          className="w-full py-4 px-4 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-base uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition cursor-pointer"
+          onClick={handleApproveWithPreview}
+          disabled={isCapturingDesign}
+          className="w-full py-4 px-4 bg-[#39FF14] hover:bg-[#32e012] disabled:opacity-70 text-black font-heading font-black text-base uppercase tracking-wider rounded-xl shadow-lg flex items-center justify-center gap-2 transition cursor-pointer disabled:cursor-wait"
         >
-          <CheckCircle2 className="w-5 h-5" />
-          <span>Approve Design & Add to Cart</span>
+          {isCapturingDesign ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+          <span>{isCapturingDesign ? 'Capturing Design...' : 'Approve Design & Add to Cart'}</span>
         </button>
       </div>
     </div>

@@ -92,7 +92,7 @@ export default function App() {
     setCurrentScreen('product-detail');
   };
 
-  const handleApproveDesign = () => {
+  const handleApproveDesign = (designPreviews: Partial<Record<GarmentSide, string>>) => {
     // Add customized item to cart
     const placementsSummary = placedElements
       .map(
@@ -115,6 +115,7 @@ export default function App() {
       unitPrice: activeProduct.basePrice + store.config.printFee,
       qty: 1,
       placements: [...placedElements],
+      designPreviews,
       summary: placementsSummary,
     });
 

@@ -110,7 +110,7 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
             <span>Rendered Hoodie Views in Confirmation:</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {order.items.map((item, idx) => (
               <React.Fragment key={idx}>
                 <div className="p-2.5 rounded-lg bg-black/60 border border-neutral-800 text-center space-y-1">
@@ -119,7 +119,11 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
                   </div>
                   <div className="h-28 flex items-center justify-center overflow-hidden">
                     <img
-                      src={getHoodiePhoto(item.imageType, item.color, 'front')}
+                      src={
+                        item.designPreviews?.front ||
+                        (item.designPreviewSide === 'front' ? item.designPreview : undefined) ||
+                        getHoodiePhoto(item.imageType, item.color, 'front')
+                      }
                       alt={`${item.productName} Front`}
                       className="max-h-full max-w-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
                     />
@@ -135,13 +139,33 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
                   </div>
                   <div className="h-28 flex items-center justify-center overflow-hidden">
                     <img
-                      src={getHoodiePhoto(item.imageType, item.color, 'back')}
+                      src={
+                        item.designPreviews?.back ||
+                        (item.designPreviewSide === 'back' ? item.designPreview : undefined) ||
+                        getHoodiePhoto(item.imageType, item.color, 'back')
+                      }
                       alt={`${item.productName} Back`}
                       className="max-h-full max-w-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
                     />
                   </div>
                   <div className="text-[10px] font-mono text-[#39FF14]">
                     {item.placements?.length || 0} Placements
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-black/60 border border-neutral-800 text-center space-y-1">
+                  <div className="text-[10px] font-mono uppercase text-neutral-400">
+                    {item.productName} (Sleeve)
+                  </div>
+                  <div className="h-28 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={item.designPreviews?.sleeve || getHoodiePhoto(item.imageType, item.color, 'sleeve')}
+                      alt={`${item.productName} Sleeve`}
+                      className="max-h-full max-w-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                    />
+                  </div>
+                  <div className="text-[10px] font-mono text-[#39FF14]">
+                    Sleeve view
                   </div>
                 </div>
               </React.Fragment>

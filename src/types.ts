@@ -85,6 +85,9 @@ export interface CartItem {
   color: string;
   size: string;
   placements: PlantedElement[];
+  designPreviews?: Partial<Record<GarmentSide, string>>;
+  designPreview?: string;
+  designPreviewSide?: GarmentSide;
   summary: string;
   basePrice: number;
   printFee: number;

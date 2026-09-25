@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { GarmentSide, PlantedElement, PrintZone, Product, GraphicItem } from '../types';
 import { getHoodiePhoto, PRINT_ZONES } from '../data/mockData';
+import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
 import {
   RotateCcw,
   Maximize2,
@@ -29,6 +30,7 @@ interface GarmentMockupProps {
   onDropUpload?: (imageUrl: string, fileName: string, isLowRes: boolean) => void;
   onDropGraphic?: (graphic: GraphicItem, x: number, y: number) => void;
   readOnly?: boolean;
+  onRootElement?: (element: HTMLDivElement | null) => void;
 }
 
 type DragMode = 'move' | 'scale' | 'rotate' | null;
@@ -49,6 +51,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
   onDropUpload,
   onDropGraphic,
   readOnly = false,
+  onRootElement,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const printZoneRef = useRef<HTMLDivElement>(null);
@@ -393,9 +396,14 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     ? 'bg-gradient-to-b from-[#141822] via-[#0f1218] to-[#090b0e] border-neutral-800 text-white shadow-[0_20px_50px_rgba(0,0,0,0.85)]'
     : 'bg-gradient-to-b from-[#f8fafc] via-[#f1f5f9] to-[#e2e8f0] border-neutral-300 text-neutral-900 shadow-[0_20px_50px_rgba(0,0,0,0.18)]';
 
+  const setRootElement = (element: HTMLDivElement | null) => {
+    containerRef.current = element;
+    onRootElement?.(element);
+  };
+
   return (
     <div
-      ref={containerRef}
+      ref={setRootElement}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -408,7 +416,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
       {/* Boundary Warning Alert Banner */}
       {boundaryWarning && (
-        <div className="absolute top-12 left-4 right-4 z-50 animate-bounce pointer-events-none">
+        <div data-capture-ignore="true" className="absolute top-12 left-4 right-4 z-50 animate-bounce pointer-events-none">
           <div className="bg-amber-500 text-black px-3 py-1.5 rounded-lg font-mono text-[10px] font-black text-center shadow-2xl flex items-center justify-center gap-1.5 border border-amber-600">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span>{boundaryWarning}</span>
@@ -417,7 +425,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       )}
 
       {/* Top Left View Angle & Garment Specs Header */}
-      <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 pointer-events-none">
+      <div data-capture-ignore="true" className="absolute top-3 left-3 z-30 flex items-center gap-1.5 pointer-events-none">
         <span className="px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-[10px] font-mono font-bold tracking-wider uppercase text-white border border-neutral-700/80 shadow-sm">
           {side.toUpperCase()} VIEW
         </span>
@@ -427,7 +435,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       </div>
 
       {/* Top Right Fabric Quality Tag */}
-      <div className="absolute top-3 right-3 z-30 pointer-events-none hidden sm:block">
+      <div data-capture-ignore="true" className="absolute top-3 right-3 z-30 pointer-events-none hidden sm:block">
         <span className={`px-2 py-0.5 rounded-md backdrop-blur-md text-[9px] font-mono font-semibold border ${
           isLightGarment ? 'bg-neutral-900/85 text-neutral-300 border-neutral-800' : 'bg-white/90 text-neutral-800 border-neutral-300 shadow-sm'
         }`}>
@@ -437,7 +445,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
       {/* Desktop Direct File Drop Overlay */}
       {isHoveringDropZone && (
-        <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fadeIn pointer-events-none">
+        <div data-capture-ignore="true" className="absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-fadeIn pointer-events-none">
           <div className="w-16 h-16 rounded-2xl bg-[#39FF14]/20 border-2 border-[#39FF14] flex items-center justify-center text-[#39FF14] animate-bounce mb-3 shadow-[0_0_25px_rgba(57,255,20,0.5)]">
             <UploadCloud className="w-8 h-8" />
           </div>
@@ -454,13 +462,22 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {/* 1. REAL AUTHENTIC HOODIE PHOTOGRAPHY (Accurate color and silhouette) */}
       {/* ========================================================================= */}
       <div className="w-full h-full p-1 flex items-center justify-center relative pointer-events-none select-none">
-        <img
-          src={hoodiePhotoUrl}
-          alt={`${product?.name || (isZipper ? 'Adult Zip Hoodie' : 'Salapeed')} ${colorName} hoodie - ${side} view`}
-          className="w-full h-full object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
-          draggable={false}
-          referrerPolicy="no-referrer"
-        />
+        {side === 'sleeve' ? (
+          <RealisticHoodieGraphic
+            imageType={imageType}
+            colorName={colorName}
+            side="sleeve"
+            className="filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)]"
+          />
+        ) : (
+          <img
+            src={hoodiePhotoUrl}
+            alt={`${product?.name || (isZipper ? 'Adult Zip Hoodie' : 'Salapeed')} ${colorName} hoodie - ${side} view`}
+            className="w-full h-full object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
+            draggable={false}
+            referrerPolicy="no-referrer"
+          />
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -490,6 +507,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {/* Kangaroo Pocket Seam Exclusion Guide (Front View) */}
       {side === 'front' && (
         <div
+          data-capture-ignore="true"
           className="absolute z-20 pointer-events-none left-[26%] right-[26%] flex items-center justify-center border-t-2 border-dashed border-red-500/60 shadow-sm"
           style={{ top: '53.5%' }}
         >
@@ -513,7 +531,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         }}
       >
         {/* Dashed Print-Safe Boundary Box */}
-        <div className="absolute inset-0 border-2 border-dashed border-[#39FF14]/85 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.22)]">
+        <div data-capture-ignore="true" className="absolute inset-0 border-2 border-dashed border-[#39FF14]/85 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.22)]">
           <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/95 text-[#39FF14] text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-[#39FF14]/50 shadow-md">
             {activeZone.name.toUpperCase()} (SAFE PRINT ZONE)
           </span>
@@ -521,10 +539,10 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
         {/* Magnetic Snapping Guidelines */}
         {showSnapGuideX && (
-          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-l border-dashed border-black/60" />
+          <div data-capture-ignore="true" className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-l border-dashed border-black/60" />
         )}
         {showSnapGuideY && (
-          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-t border-dashed border-black/60" />
+          <div data-capture-ignore="true" className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-[#39FF14] z-50 pointer-events-none shadow-[0_0_8px_#39FF14] border-t border-dashed border-black/60" />
         )}
 
         {/* ===================================================================== */}
@@ -548,7 +566,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
             >
               {/* INTERACTIVE TRANSFORMER BOUNDING BOX & PROMINENT DIRECT HANDLES */}
               {isSelected && !readOnly && (
-                <div className="absolute -inset-4 border-2 border-[#39FF14] rounded-lg pointer-events-none shadow-[0_0_20px_rgba(57,255,20,0.7)]">
+                <div data-capture-ignore="true" className="absolute -inset-4 border-2 border-[#39FF14] rounded-lg pointer-events-none shadow-[0_0_20px_rgba(57,255,20,0.7)]">
                   {/* Top Attached Rotate Handle (Direct Rotate & Drag Handle) */}
                   <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto">
                     <button
@@ -665,7 +683,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
       {/* Floating Center Snapping Action Tooltip */}
       {selectedElementId && !readOnly && (
-        <div className="absolute bottom-2.5 right-3 z-30 flex items-center gap-1.5">
+        <div data-capture-ignore="true" className="absolute bottom-2.5 right-3 z-30 flex items-center gap-1.5">
           <button
             onClick={() => onUpdateElementPosition(selectedElementId, 50, 50)}
             className="p-1.5 rounded-lg bg-black/90 hover:bg-neutral-800 text-[#39FF14] border border-neutral-700/80 transition cursor-pointer shadow-md flex items-center gap-1 text-[10px] font-mono font-bold"

@@ -21,8 +21,16 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
 
   const itemsHtml = order.items
     .map((item, idx) => {
-      const frontPhoto = getHoodiePhoto(item.imageType, item.color, 'front');
-      const backPhoto = getHoodiePhoto(item.imageType, item.color, 'back');
+      const frontPhoto =
+        item.designPreviews?.front ||
+        (item.designPreviewSide === 'front' ? item.designPreview : undefined) ||
+        getHoodiePhoto(item.imageType, item.color, 'front');
+      const backPhoto =
+        item.designPreviews?.back ||
+        (item.designPreviewSide === 'back' ? item.designPreview : undefined) ||
+        getHoodiePhoto(item.imageType, item.color, 'back');
+      const sleevePhoto =
+        item.designPreviews?.sleeve || getHoodiePhoto(item.imageType, item.color, 'sleeve');
 
       const placementsList = (item.placements || [])
         .map(
@@ -56,6 +64,10 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
           <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
             <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">Back Custom View</div>
             <img src="${backPhoto}" alt="Back Mockup" style="max-height: 140px; max-width: 100%; object-fit: contain;" />
+          </div>
+          <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">Sleeve Custom View</div>
+            <img src="${sleevePhoto}" alt="Sleeve Mockup" style="max-height: 140px; max-width: 100%; object-fit: contain;" />
           </div>
         </div>
 
@@ -175,8 +187,16 @@ export function generatePrintShopPackageEmail(
 
   const garmentsBreakdown = order.items
     .map((item, idx) => {
-      const frontPhoto = getHoodiePhoto(item.imageType, item.color, 'front');
-      const backPhoto = getHoodiePhoto(item.imageType, item.color, 'back');
+      const frontPhoto =
+        item.designPreviews?.front ||
+        (item.designPreviewSide === 'front' ? item.designPreview : undefined) ||
+        getHoodiePhoto(item.imageType, item.color, 'front');
+      const backPhoto =
+        item.designPreviews?.back ||
+        (item.designPreviewSide === 'back' ? item.designPreview : undefined) ||
+        getHoodiePhoto(item.imageType, item.color, 'back');
+      const sleevePhoto =
+        item.designPreviews?.sleeve || getHoodiePhoto(item.imageType, item.color, 'sleeve');
 
       const printPlacementsTable = (item.placements || [])
         .map(
@@ -211,7 +231,7 @@ export function generatePrintShopPackageEmail(
         </div>
 
         <!-- High-Definition Operator Views -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
           <div style="background: #000; border: 1px solid #262c36; border-radius: 6px; padding: 8px; text-align: center;">
             <div style="color: #39FF14; font-size: 10px; font-family: monospace; margin-bottom: 4px; font-weight: bold;">FRONT VIEW SPECIFICATION</div>
             <img src="${frontPhoto}" alt="Front Spec" style="max-height: 160px; max-width: 100%; object-fit: contain;" />
@@ -219,6 +239,10 @@ export function generatePrintShopPackageEmail(
           <div style="background: #000; border: 1px solid #262c36; border-radius: 6px; padding: 8px; text-align: center;">
             <div style="color: #39FF14; font-size: 10px; font-family: monospace; margin-bottom: 4px; font-weight: bold;">BACK VIEW SPECIFICATION</div>
             <img src="${backPhoto}" alt="Back Spec" style="max-height: 160px; max-width: 100%; object-fit: contain;" />
+          </div>
+          <div style="background: #000; border: 1px solid #262c36; border-radius: 6px; padding: 8px; text-align: center;">
+            <div style="color: #39FF14; font-size: 10px; font-family: monospace; margin-bottom: 4px; font-weight: bold;">SLEEVE VIEW SPECIFICATION</div>
+            <img src="${sleevePhoto}" alt="Sleeve Spec" style="max-height: 160px; max-width: 100%; object-fit: contain;" />
           </div>
         </div>
 
