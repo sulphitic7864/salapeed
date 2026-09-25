@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { COLOR_OPTIONS, SALAPEED_BRAND } from '../data/mockData';
+import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
 import { Phone, Globe, Instagram, Check, ArrowRight } from 'lucide-react';
 
 interface BrochurePedestalCardProps {
@@ -34,7 +34,7 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
   const photo =
     product.colorPhotos?.[activeColor] ||
     product.photoUrl ||
-    '/images/hoodie-zipper-navy.jpg';
+    getHoodiePhoto(product.imageType, activeColor, 'front', product);
 
   const title = product.brochureTitle || product.name.toUpperCase();
 

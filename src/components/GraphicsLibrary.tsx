@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GraphicItem } from '../types';
-import { Search, Upload, Type, ArrowLeft, AlertCircle, Sparkles } from 'lucide-react';
+import { Search, Upload, Type, ArrowLeft, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 
 interface GraphicsLibraryProps {
   graphics: GraphicItem[];
@@ -24,6 +24,9 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
+  const [displayLimit, setDisplayLimit] = useState(6);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const filtered = graphics.filter((g) => {
     const matchesCat = activeCategory === 'All' || g.category === activeCategory;
@@ -33,6 +36,30 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
       g.category.toLowerCase().includes(search.toLowerCase());
     return matchesCat && matchesSearch;
   });
+  const visibleGraphics = filtered.slice(0, displayLimit);
+  const hasMore = displayLimit < filtered.length;
+
+  useEffect(() => {
+    setDisplayLimit(6);
+  }, [search, activeCategory]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          setIsLoadingMore(true);
+          setTimeout(() => {
+            setDisplayLimit((previous) => Math.min(previous + 6, filtered.length));
+            setIsLoadingMore(false);
+          }, 450);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, filtered.length]);
 
   const handleFileUpload = (file: File) => {
     if (!file) return;
@@ -168,8 +195,8 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
       </div>
 
       {/* Graphics Grid */}
-      <div className="grid grid-cols-2 gap-3 pt-1">
-        {filtered.map((g) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-1">
+        {visibleGraphics.map((g) => (
           <div
             key={g.id}
             onClick={() => onSelectGraphic(g)}
@@ -214,6 +241,27 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
           No graphics found matching "{search}". Try searching another keyword or upload your own image.
         </div>
       )}
+
+      <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center text-center">
+        {isLoadingMore ? (
+          <div className="flex items-center gap-2 text-xs font-mono text-[#39FF14] animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Loading more graphics...</span>
+          </div>
+        ) : hasMore ? (
+          <button
+            type="button"
+            onClick={() => setDisplayLimit((previous) => Math.min(previous + 6, filtered.length))}
+            className="px-5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 text-xs font-mono font-bold transition cursor-pointer"
+          >
+            Scroll or Click to Load More Graphics ({filtered.length - visibleGraphics.length} remaining)
+          </button>
+        ) : filtered.length > 0 ? (
+          <span className="text-[11px] font-mono text-neutral-600">
+            &bull; All graphics loaded &bull;
+          </span>
+        ) : null}
+      </div>
 
       {/* Upload Modal */}
       {showUploadModal && (

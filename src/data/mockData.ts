@@ -1,4 +1,20 @@
 import { Product, ColorOption, PrintZone, GraphicItem, AdminConfig, GarmentSide } from '../types';
+import hoodieBlackFront from '../assets/images/black_hoodie_front_1790366781164.jpg';
+import hoodieBlackBack from '../assets/images/black_hoodie_back_1790366791830.jpg';
+import hoodieRedFront from '../assets/images/red_hoodie_front_1790366761668.jpg';
+import hoodieRedBack from '../assets/images/red_hoodie_back_1790366771364.jpg';
+import hoodieNavyFront from '../assets/images/navy_hoodie_front_1790366861083.jpg';
+import hoodieNavyBack from '../assets/images/navy_hoodie_back_1790366872344.jpg';
+import hoodieGreyFront from '../assets/images/grey_hoodie_front_1790366830539.jpg';
+import hoodieGreyBack from '../assets/images/grey_hoodie_back_1790366840821.jpg';
+import zipBlackFront from '../assets/images/black_zip_front_1790367554643.jpg';
+import zipBlackBack from '../assets/images/zip_black_back_1790367613342.jpg';
+import zipRedFront from '../assets/images/zip_red_front_1790367656998.jpg';
+import zipRedBack from '../assets/images/zip_red_back_1790367679389.jpg';
+import zipNavyFront from '../assets/images/zip_navy_front_1790367624626.jpg';
+import zipNavyBack from '../assets/images/zip_navy_back_1790367635905.jpg';
+import zipGreyFront from '../assets/images/zip_grey_front_1790367646986.jpg';
+import zipGreyBack from '../assets/images/zip_grey_back_1790367668790.jpg';
 
 export const COLOR_OPTIONS: Record<string, ColorOption> = {
   Navy: { name: 'Navy', hex: '#1d2a44', ink: '#f0f4f8' },
@@ -36,14 +52,14 @@ export const INITIAL_PRODUCTS: Product[] = [
     colors: ['Black', 'Red', 'Heather Grey', 'Navy', 'Charcoal', 'White'],
     sizes: KIDS_SIZES,
     imageType: 'kids',
-    photoUrl: '/images/hoodie-pullover-black-front.jpg',
+    photoUrl: hoodieBlackFront,
     colorPhotos: {
-      Black: '/images/hoodie-pullover-black-front.jpg',
-      Charcoal: '/images/hoodie-pullover-black-front.jpg',
-      Red: '/images/hoodie-pullover-red-front.jpg',
-      'Heather Grey': '/images/hoodie-pullover-grey-front.jpg',
-      White: '/images/hoodie-pullover-grey-front.jpg',
-      Navy: '/images/hoodie-pullover-navy-front.jpg',
+      Black: hoodieBlackFront,
+      Charcoal: hoodieBlackFront,
+      Red: hoodieRedFront,
+      'Heather Grey': hoodieGreyFront,
+      White: hoodieGreyFront,
+      Navy: hoodieNavyFront,
     },
     brochurePage: 7,
     sizeChart: {
@@ -69,14 +85,14 @@ export const INITIAL_PRODUCTS: Product[] = [
     colors: ['Black', 'Red', 'Heather Grey', 'Navy', 'Charcoal', 'White'],
     sizes: ADULT_SIZES,
     imageType: 'pullover',
-    photoUrl: '/images/hoodie-pullover-black-front.jpg',
+    photoUrl: hoodieBlackFront,
     colorPhotos: {
-      Black: '/images/hoodie-pullover-black-front.jpg',
-      Charcoal: '/images/hoodie-pullover-black-front.jpg',
-      Red: '/images/hoodie-pullover-red-front.jpg',
-      'Heather Grey': '/images/hoodie-pullover-grey-front.jpg',
-      White: '/images/hoodie-pullover-grey-front.jpg',
-      Navy: '/images/hoodie-pullover-navy-front.jpg',
+      Black: hoodieBlackFront,
+      Charcoal: hoodieBlackFront,
+      Red: hoodieRedFront,
+      'Heather Grey': hoodieGreyFront,
+      White: hoodieGreyFront,
+      Navy: hoodieNavyFront,
     },
     brochurePage: 3,
     sizeChart: {
@@ -102,14 +118,14 @@ export const INITIAL_PRODUCTS: Product[] = [
     colors: ['Black', 'Navy', 'Heather Grey', 'Red', 'Charcoal', 'White'],
     sizes: ADULT_SIZES,
     imageType: 'zipper',
-    photoUrl: '/images/hoodie-zip-black-front.jpg',
+    photoUrl: zipBlackFront,
     colorPhotos: {
-      Black: '/images/hoodie-zip-black-front.jpg',
-      Navy: '/images/hoodie-zip-navy-front.jpg',
-      'Heather Grey': '/images/hoodie-zip-grey-front.jpg',
-      Red: '/images/hoodie-zip-red-front.jpg',
-      Charcoal: '/images/hoodie-zip-black-front.jpg',
-      White: '/images/hoodie-zip-grey-front.jpg',
+      Black: zipBlackFront,
+      Navy: zipNavyFront,
+      'Heather Grey': zipGreyFront,
+      Red: zipRedFront,
+      Charcoal: zipBlackFront,
+      White: zipGreyFront,
     },
     brochurePage: 1,
     sizeChart: {
@@ -182,42 +198,42 @@ export function getHoodiePhoto(
 
   // SLEEVE VIEW
   if (side === 'sleeve') {
-    return '/images/hoodie-sleeve-view.jpg';
+    return getHoodiePhoto(imageType, colorName, 'front', product);
   }
 
   // REAL FULL-ZIP HOODIE (Visible metallic zipper, split kangaroo pockets)
   if (isZip) {
     if (side === 'back') {
-      if (normColor === 'Red') return '/images/hoodie-zip-red-back.jpg';
-      if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-zip-grey-back.jpg';
-      if (normColor === 'Navy') return '/images/hoodie-zip-navy-back.jpg';
+      if (normColor === 'Red') return zipRedBack;
+      if (normColor === 'Heather Grey' || normColor === 'White') return zipGreyBack;
+      if (normColor === 'Navy') return zipNavyBack;
       // Black / Charcoal default
-      return '/images/hoodie-zip-black-back.jpg';
+      return zipBlackBack;
     }
 
     // FRONT VIEW
-    if (normColor === 'Red') return '/images/hoodie-zip-red-front.jpg';
-    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-zip-grey-front.jpg';
-    if (normColor === 'Navy') return '/images/hoodie-zip-navy-front.jpg';
+    if (normColor === 'Red') return zipRedFront;
+    if (normColor === 'Heather Grey' || normColor === 'White') return zipGreyFront;
+    if (normColor === 'Navy') return zipNavyFront;
     // Black / Charcoal default
-    return '/images/hoodie-zip-black-front.jpg';
+    return zipBlackFront;
   }
 
   // PULLOVER FLEECE HOODIE (Adults & Kids Pullover)
   if (side === 'back') {
-    if (normColor === 'Red') return '/images/hoodie-pullover-red-back.jpg';
-    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-pullover-grey-back.jpg';
-    if (normColor === 'Navy') return '/images/hoodie-pullover-navy-back.jpg';
+    if (normColor === 'Red') return hoodieRedBack;
+    if (normColor === 'Heather Grey' || normColor === 'White') return hoodieGreyBack;
+    if (normColor === 'Navy') return hoodieNavyBack;
     // Black / Charcoal default
-    return '/images/hoodie-pullover-black-back.jpg';
+    return hoodieBlackBack;
   }
 
   // FRONT VIEWS: Matching front silhouette
-  if (normColor === 'Red') return '/images/hoodie-pullover-red-front.jpg';
-  if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-pullover-grey-front.jpg';
-  if (normColor === 'Navy') return '/images/hoodie-pullover-navy-front.jpg';
+  if (normColor === 'Red') return hoodieRedFront;
+  if (normColor === 'Heather Grey' || normColor === 'White') return hoodieGreyFront;
+  if (normColor === 'Navy') return hoodieNavyFront;
   // Black / Charcoal default
-  return '/images/hoodie-pullover-black-front.jpg';
+  return hoodieBlackFront;
 }
 
 export const INITIAL_CATEGORIES = [

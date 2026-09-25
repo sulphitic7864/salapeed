@@ -34,12 +34,16 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'kids' | 'pullover' | 'zipper'>('all');
+  const [displayLimit, setDisplayLimit] = useState(6);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Sorted products as strictly required:
   // 1. Kids Hoodie
   // 2. Adults Fleece Hoodie (Pullover)
   // 3. Adult Zip Hoodie
-  const sortedProducts = [...products].sort((a, b) => {
+  const uniqueProducts = [...new Map(products.map((product) => [product.id, product])).values()];
+  const sortedProducts = uniqueProducts.sort((a, b) => {
     const orderMap: Record<string, number> = {
       'kids-hoodie': 1,
       'fleece-hoodie': 2,
@@ -66,30 +70,12 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
     return matchesSearch && matchesCategory;
   });
 
-  // Infinite Scroll: paginate display of catalog
-  // Generates repeated visual catalog items when small dataset so infinite scroll smoothly works
-  const [displayLimit, setDisplayLimit] = useState(6);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const visibleList = filteredProducts.slice(0, displayLimit);
+  const hasMore = displayLimit < filteredProducts.length;
 
-  // Pool of items for infinite scrolling simulation
-  const expandedProducts = React.useMemo(() => {
-    if (filteredProducts.length === 0) return [];
-    // Repeat items to provide rich browsing & continuous infinite scroll
-    let list: (Product & { displayId: string })[] = [];
-    for (let i = 0; i < 6; i++) {
-      list = list.concat(
-        filteredProducts.map((p, idx) => ({
-          ...p,
-          displayId: `${p.id}-run${i}-${idx}`,
-        }))
-      );
-    }
-    return list;
-  }, [filteredProducts]);
-
-  const visibleList = expandedProducts.slice(0, displayLimit);
-  const hasMore = displayLimit < expandedProducts.length;
+  useEffect(() => {
+    setDisplayLimit(6);
+  }, [searchQuery, selectedCategory]);
 
   // Infinite scroll intersection observer
   useEffect(() => {
@@ -98,7 +84,7 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
         if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
           setIsLoadingMore(true);
           setTimeout(() => {
-            setDisplayLimit((prev) => Math.min(prev + 6, expandedProducts.length));
+            setDisplayLimit((prev) => Math.min(prev + 6, filteredProducts.length));
             setIsLoadingMore(false);
           }, 450);
         }
@@ -111,7 +97,7 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
     }
 
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, expandedProducts.length]);
+  }, [hasMore, isLoadingMore, filteredProducts.length]);
 
   // Store active preview color per product
   const [activeColors, setActiveColors] = useState<Record<string, string>>(() => {
@@ -291,7 +277,7 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
           {visibleList.map((product) => {
             const currentColor = activeColors[product.id] || product.colors[0] || 'Black';
             const swatch = COLOR_OPTIONS[currentColor] || COLOR_OPTIONS.Black;
@@ -299,7 +285,7 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
 
             return (
               <div
-                key={product.displayId}
+                key={product.id}
                 onClick={() => onSelectProduct(product)}
                 className="blueprint-card p-3 rounded-xl flex flex-col justify-between hover:border-[#39FF14]/80 transition-all duration-200 cursor-pointer group bg-[#101217] hover:shadow-[0_8px_25px_rgba(0,0,0,0.7)]"
               >
@@ -423,11 +409,11 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
             <span>Loading more styles...</span>
           </div>
         ) : hasMore ? (
-          <button
+            <button
             onClick={() => setDisplayLimit((prev) => prev + 6)}
             className="px-5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 text-xs font-mono font-bold transition cursor-pointer"
           >
-            Scroll or Click to Load More Styles ({expandedProducts.length - visibleList.length} remaining)
+            Scroll or Click to Load More Styles ({filteredProducts.length - visibleList.length} remaining)
           </button>
         ) : (
           <span className="text-[11px] font-mono text-neutral-600">

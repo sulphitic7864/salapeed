@@ -460,15 +460,6 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
           className="w-full h-full object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
           draggable={false}
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            const target = e.currentTarget as HTMLImageElement;
-            const fallback = isZipper
-              ? '/images/hoodie-zip-black-front.jpg'
-              : '/images/hoodie-pullover-black-front.jpg';
-            if (target.src !== fallback) {
-              target.src = fallback;
-            }
-          }}
         />
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Product, PlantedElement, PrintZone, GarmentSide, GraphicItem } from '../types';
-import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS, INITIAL_GRAPHICS } from '../data/mockData';
+import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS, INITIAL_GRAPHICS, getHoodiePhoto } from '../data/mockData';
 import { GarmentMockup } from './GarmentMockup';
 import {
   RotateCcw,
@@ -283,7 +283,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                 src={
                   product.colorPhotos?.[colorName] ||
                   product.photoUrl ||
-                  '/images/fleece-hoodie-charcoal.jpg'
+                  getHoodiePhoto(product.imageType, colorName, 'front', product)
                 }
                 alt={product.name}
                 className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
@@ -347,7 +347,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                   const thumbUrl =
                     p.colorPhotos?.[colorName] ||
                     p.photoUrl ||
-                    '/images/hoodie-pullover-black-front.jpg';
+                    getHoodiePhoto(p.imageType, colorName, 'front', p);
 
                   return (
                     <div
