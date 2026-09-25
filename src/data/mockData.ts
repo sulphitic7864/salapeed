@@ -33,17 +33,17 @@ export const INITIAL_PRODUCTS: Product[] = [
     desc: 'Cozy, durable 380 GSM kids fleece pullover hoodie for ages 2 to 12 years with classic kangaroo pouch pocket, no zippers, and reinforced double-needle seams.',
     kind: 'kids',
     basePrice: 7.5,
-    colors: ['Charcoal', 'Black', 'Navy', 'Heather Grey', 'Red', 'White'],
+    colors: ['Black', 'Red', 'Heather Grey', 'Navy', 'Charcoal', 'White'],
     sizes: KIDS_SIZES,
     imageType: 'kids',
-    photoUrl: '/images/kids-hoodie-charcoal.jpg',
+    photoUrl: '/images/hoodie-pullover-black-front.jpg',
     colorPhotos: {
-      Charcoal: '/images/kids-hoodie-charcoal.jpg',
-      Black: '/images/fleece-hoodie-charcoal.jpg',
-      Navy: '/images/kids-hoodie-charcoal.jpg',
-      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
-      White: '/images/fleece-hoodie-grey.jpg',
-      Red: '/images/fleece-hoodie-red.jpg',
+      Black: '/images/hoodie-pullover-black-front.jpg',
+      Charcoal: '/images/hoodie-pullover-black-front.jpg',
+      Red: '/images/hoodie-pullover-red-front.jpg',
+      'Heather Grey': '/images/hoodie-pullover-grey-front.jpg',
+      White: '/images/hoodie-pullover-grey-front.jpg',
+      Navy: '/images/hoodie-pullover-navy-front.jpg',
     },
     brochurePage: 7,
     sizeChart: {
@@ -66,17 +66,17 @@ export const INITIAL_PRODUCTS: Product[] = [
     desc: 'Classic street pullover hoodie with kangaroo pouch pocket, double-layer drawstring hood, and 380 GSM brushed fleece warmth.',
     kind: 'adult',
     basePrice: 9.5,
-    colors: ['Charcoal', 'Black', 'Navy', 'Heather Grey', 'Red', 'White'],
+    colors: ['Black', 'Red', 'Heather Grey', 'Navy', 'Charcoal', 'White'],
     sizes: ADULT_SIZES,
     imageType: 'pullover',
-    photoUrl: '/images/hd-pullover-front.jpg',
+    photoUrl: '/images/hoodie-pullover-black-front.jpg',
     colorPhotos: {
-      Charcoal: '/images/hd-pullover-front.jpg',
-      Black: '/images/fleece-hoodie-charcoal.jpg',
-      Navy: '/images/hd-pullover-front.jpg',
-      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
-      White: '/images/fleece-hoodie-grey.jpg',
-      Red: '/images/fleece-hoodie-red.jpg',
+      Black: '/images/hoodie-pullover-black-front.jpg',
+      Charcoal: '/images/hoodie-pullover-black-front.jpg',
+      Red: '/images/hoodie-pullover-red-front.jpg',
+      'Heather Grey': '/images/hoodie-pullover-grey-front.jpg',
+      White: '/images/hoodie-pullover-grey-front.jpg',
+      Navy: '/images/hoodie-pullover-navy-front.jpg',
     },
     brochurePage: 3,
     sizeChart: {
@@ -99,15 +99,17 @@ export const INITIAL_PRODUCTS: Product[] = [
     desc: 'Heavyweight 380 GSM full-zip fleece hoodie with dual split kangaroo pockets, double-lined hood, and smooth metallic front zipper.',
     kind: 'adult',
     basePrice: 11.5,
-    colors: ['Navy', 'Black', 'Heather Grey', 'Red'],
+    colors: ['Black', 'Navy', 'Heather Grey', 'Red', 'Charcoal', 'White'],
     sizes: ADULT_SIZES,
     imageType: 'zipper',
-    photoUrl: '/images/hd-zipper-front.jpg',
+    photoUrl: '/images/hoodie-zip-black-front.jpg',
     colorPhotos: {
-      Navy: '/images/hoodie-zipper-navy.jpg',
-      Black: '/images/hd-zipper-front.jpg',
-      'Heather Grey': '/images/fleece-hoodie-grey.jpg',
-      Red: '/images/fleece-hoodie-red.jpg',
+      Black: '/images/hoodie-zip-black-front.jpg',
+      Navy: '/images/hoodie-zip-navy-front.jpg',
+      'Heather Grey': '/images/hoodie-zip-grey-front.jpg',
+      Red: '/images/hoodie-zip-red-front.jpg',
+      Charcoal: '/images/hoodie-zip-black-front.jpg',
+      White: '/images/hoodie-zip-grey-front.jpg',
     },
     brochurePage: 1,
     sizeChart: {
@@ -127,29 +129,29 @@ export const INITIAL_PRODUCTS: Product[] = [
 export const PRINT_ZONES: PrintZone[] = [
   // Front View: Customer Safe Zones strictly exclude Left Chest (fixed brand logo) and Kangaroo Pocket seam
   {
+    id: 'front-centre-lower',
+    name: 'Centre Chest (Print Zone)',
+    side: 'front',
+    boundingBox: { top: 29, left: 29, width: 42, height: 23 },
+  },
+  {
     id: 'front-right',
     name: 'Right Chest (Print Zone)',
     side: 'front',
-    boundingBox: { top: 30, left: 24, width: 22, height: 18 },
-  },
-  {
-    id: 'front-centre-lower',
-    name: 'Centre / Lower Chest (Print Zone)',
-    side: 'front',
-    boundingBox: { top: 35, left: 28, width: 44, height: 19 },
+    boundingBox: { top: 30, left: 30, width: 17, height: 18 },
   },
   // Back View Print Zones (broad smooth panel excluding collar and hem)
   {
     id: 'back-full',
     name: 'Full Back (Primary Safe Zone)',
     side: 'back',
-    boundingBox: { top: 24, left: 25, width: 50, height: 48 },
+    boundingBox: { top: 23, left: 27, width: 46, height: 52 },
   },
   {
     id: 'back-upper',
     name: 'Upper Back (Shoulder Span)',
     side: 'back',
-    boundingBox: { top: 24, left: 27, width: 46, height: 22 },
+    boundingBox: { top: 23, left: 28, width: 44, height: 23 },
   },
   // Sleeve View Print Zones
   {
@@ -162,7 +164,8 @@ export const PRINT_ZONES: PrintZone[] = [
 
 /**
  * Returns genuine high-definition photography for the requested hoodie, color, and side view.
- * Guarantees color consistency between front and back views, and ensures kids/pullovers never show zippers.
+ * Guarantees color consistency between front and back views with matching flat-lay images.
+ * Properly routes zip hoodies (with real visible metallic front zipper) vs fleece pullovers.
  */
 export function getHoodiePhoto(
   imageType: string,
@@ -171,58 +174,50 @@ export function getHoodiePhoto(
   product?: Product
 ): string {
   const normColor = (colorName || '').trim();
-
-  // BACK VIEWS: Accurately matches selected color and silhouette
-  if (side === 'back') {
-    if (imageType === 'zipper') {
-      if (normColor === 'Navy') return '/images/hoodie-zipper-back.jpg';
-      if (normColor === 'Heather Grey' || normColor === 'White') return '/images/fleece-hoodie-back.jpg';
-      if (normColor === 'Red') return '/images/fleece-hoodie-back.jpg';
-      return '/images/hd-zipper-back.jpg';
-    }
-    // Kids and Pullovers: Plain fleece back with hood and seam (NO zipper!)
-    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/fleece-hoodie-back.jpg';
-    if (normColor === 'Red') return '/images/fleece-hoodie-back.jpg';
-    return '/images/hd-pullover-back.jpg';
-  }
+  const isZip =
+    imageType === 'zipper' ||
+    product?.imageType === 'zipper' ||
+    product?.id === 'zipper-hoodie' ||
+    (product?.name && product.name.toLowerCase().includes('zip'));
 
   // SLEEVE VIEW
   if (side === 'sleeve') {
     return '/images/hoodie-sleeve-view.jpg';
   }
 
-  // FRONT VIEWS
-  // 1. Kids Hoodie (Plain fleece pullover, NEVER a zipper!)
-  if (imageType === 'kids') {
-    if (normColor === 'Black') return '/images/fleece-hoodie-charcoal.jpg';
-    if (normColor === 'Red') return '/images/fleece-hoodie-red.jpg';
-    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/fleece-hoodie-grey.jpg';
-    return '/images/kids-hoodie-charcoal.jpg';
+  // REAL FULL-ZIP HOODIE (Visible metallic zipper, split kangaroo pockets)
+  if (isZip) {
+    if (side === 'back') {
+      if (normColor === 'Red') return '/images/hoodie-zip-red-back.jpg';
+      if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-zip-grey-back.jpg';
+      if (normColor === 'Navy') return '/images/hoodie-zip-navy-back.jpg';
+      // Black / Charcoal default
+      return '/images/hoodie-zip-black-back.jpg';
+    }
+
+    // FRONT VIEW
+    if (normColor === 'Red') return '/images/hoodie-zip-red-front.jpg';
+    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-zip-grey-front.jpg';
+    if (normColor === 'Navy') return '/images/hoodie-zip-navy-front.jpg';
+    // Black / Charcoal default
+    return '/images/hoodie-zip-black-front.jpg';
   }
 
-  // 2. Pullover Hoodie (Plain fleece pullover, NEVER a zipper!)
-  if (imageType === 'pullover') {
-    if (normColor === 'Black') return '/images/fleece-hoodie-charcoal.jpg';
-    if (normColor === 'Red') return '/images/fleece-hoodie-red.jpg';
-    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/fleece-hoodie-grey.jpg';
-    if (normColor === 'Charcoal') return '/images/hd-pullover-front.jpg';
-    return '/images/hd-pullover-front.jpg';
+  // PULLOVER FLEECE HOODIE (Adults & Kids Pullover)
+  if (side === 'back') {
+    if (normColor === 'Red') return '/images/hoodie-pullover-red-back.jpg';
+    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-pullover-grey-back.jpg';
+    if (normColor === 'Navy') return '/images/hoodie-pullover-navy-back.jpg';
+    // Black / Charcoal default
+    return '/images/hoodie-pullover-black-back.jpg';
   }
 
-  // 3. Zipper Hoodie (Heavyweight metallic front zipper)
-  if (imageType === 'zipper') {
-    if (normColor === 'Navy') return '/images/hoodie-zipper-navy.jpg';
-    if (normColor === 'Red') return '/images/fleece-hoodie-red.jpg';
-    if (normColor === 'Heather Grey' || normColor === 'White') return '/images/fleece-hoodie-grey.jpg';
-    return '/images/hd-zipper-front.jpg';
-  }
-
-  // Fallback to custom product photos
-  if (product?.colorPhotos && product.colorPhotos[normColor]) {
-    return product.colorPhotos[normColor];
-  }
-
-  return '/images/hd-pullover-front.jpg';
+  // FRONT VIEWS: Matching front silhouette
+  if (normColor === 'Red') return '/images/hoodie-pullover-red-front.jpg';
+  if (normColor === 'Heather Grey' || normColor === 'White') return '/images/hoodie-pullover-grey-front.jpg';
+  if (normColor === 'Navy') return '/images/hoodie-pullover-navy-front.jpg';
+  // Black / Charcoal default
+  return '/images/hoodie-pullover-black-front.jpg';
 }
 
 export const INITIAL_CATEGORIES = [

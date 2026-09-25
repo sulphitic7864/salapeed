@@ -77,8 +77,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Official Salapeed Brand Ribbon */}
       <div className="p-3 bg-gradient-to-r from-[#14171f] via-[#0f1116] to-[#14171f] rounded-xl border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md bg-black border border-[#39FF14]/40 p-0.5 flex items-center justify-center overflow-hidden">
-            <img src="/salapeed-logo.jpeg" alt="Salapeed" className="w-full h-full object-contain" />
+          <div className="h-6 px-1.5 rounded-md bg-black border border-[#39FF14]/60 flex items-center justify-center shadow-sm">
+            <img src="/salapeed-logo.svg" alt="Salapeed" className="h-4 w-auto object-contain" />
           </div>
           <span className="font-heading font-black text-white text-sm tracking-wide">
             Salapeed
@@ -240,33 +240,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* =========================================================================
-          TRUSTED BY STRIP (UberPrints Style Social Proof)
-      ========================================================================= */}
-      <div className="p-4 rounded-xl bg-[#0f1217] border border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center text-amber-400">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className="w-4 h-4 fill-amber-400 stroke-amber-400" />
-            ))}
-          </div>
-          <span className="text-xs font-bold text-white">4.9 / 5.0</span>
-          <span className="text-xs text-neutral-400">
-            from 1,200+ Bahrain Creators, Brands & Teams
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-4 text-neutral-400 text-xs font-mono tracking-wider uppercase">
-          <span className="text-neutral-500">TRUSTED BY:</span>
-          <span className="text-neutral-300 font-bold">F1 FAN CLUBS</span>
-          <span className="text-neutral-500">&bull;</span>
-          <span className="text-neutral-300 font-bold">ESPORTS LEAGUES</span>
-          <span className="text-neutral-500">&bull;</span>
-          <span className="text-neutral-300 font-bold">UOB SOCIETIES</span>
-          <span className="text-neutral-500">&bull;</span>
-          <span className="text-neutral-300 font-bold">STREETWEAR BRANDS</span>
-        </div>
-      </div>
 
       {/* =========================================================================
           2. BEST-SELLING HOODIES (KIDS HOODIE LISTED #1 FIRST)
@@ -382,62 +355,79 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* =========================================================================
-          3. DIRECT ACCESS TO DESIGN STUDIO
-          Replaces the preview image section with a direct, fast CTA to studio!
+          DESIGN YOUR HOODIE IN MINUTES (Exact Match to User Reference)
       ========================================================================= */}
-      <section className="rounded-2xl border border-neutral-800 bg-gradient-to-br from-[#12151d] via-[#0d0f14] to-[#0a0c0f] p-6 sm:p-10 relative overflow-hidden shadow-2xl">
-        <div className="absolute inset-0 sp-stripes-subtle opacity-20 pointer-events-none" />
-        <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-3 text-left max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#39FF14]/15 border border-[#39FF14]/40 text-xs font-mono text-[#39FF14] font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-neutral-800 bg-[#0c0e14] p-6 sm:p-10 shadow-2xl">
+        <div className="absolute inset-0 sp-stripes opacity-15 pointer-events-none" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-8 lg:gap-12">
+          {/* Left Side: Copy, Highlighted Header & Checklist */}
+          <div className="space-y-5 text-left max-w-2xl">
+            {/* Top Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/40 text-[11px] font-mono font-bold text-[#39FF14] tracking-wider uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-[#39FF14]" />
               <span>DIRECT ACCESS STUDIO &bull; NO DELAYS</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-black uppercase text-white tracking-tight leading-tight">
-              DESIGN YOUR HOODIE IN MINUTES. GO STRAIGHT TO STUDIO.
+
+            {/* Headline */}
+            <h2 className="text-2xl sm:text-4xl lg:text-[42px] font-heading font-black uppercase tracking-tight text-white leading-[1.15]">
+              <span>DESIGN YOUR HOODIE IN MINUTES. GO</span>
+              <div className="text-white mt-1 font-black">
+                STRAIGHT TO STUDIO.
+              </div>
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+
+            {/* Subtext */}
+            <p className="text-xs sm:text-base text-neutral-300 leading-relaxed max-w-xl">
               Skip the wait. Select your silhouette (Kids, Adults Pullover, or Full-Zip), choose your size and fabric color, and drop your artwork onto the safe print zone canvas immediately.
             </p>
-            <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-neutral-400 font-mono">
-              <span className="flex items-center gap-1.5 text-neutral-200">
-                <CheckCircle2 className="w-4 h-4 text-[#39FF14]" />
-                Flat Delivery BD {deliveryFee.toFixed(3)}
-              </span>
-              <span className="flex items-center gap-1.5 text-neutral-200">
-                <CheckCircle2 className="w-4 h-4 text-[#39FF14]" />
-                BenefitPay Accepted Exclusively
-              </span>
-              <span className="flex items-center gap-1.5 text-neutral-200">
-                <CheckCircle2 className="w-4 h-4 text-[#39FF14]" />
-                Zero Minimum Order Quantity
-              </span>
+
+            {/* Checklist items */}
+            <div className="space-y-2 pt-1 font-mono text-xs sm:text-[13px] text-neutral-200">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#39FF14] shrink-0" />
+                  <span>Flat Delivery BD {deliveryFee.toFixed(3)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#39FF14] shrink-0" />
+                  <span>BenefitPay Accepted Exclusively</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#39FF14] shrink-0" />
+                <span>Zero Minimum Order Quantity</span>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0 w-full sm:w-auto">
+          {/* Right Side: Stacked Action Buttons */}
+          <div className="flex flex-col gap-3.5 w-full sm:w-80 shrink-0">
+            {/* Primary Neon Green Glowing CTA */}
             <button
               type="button"
-              onClick={() => onStartCustomizing()}
-              className="py-4 px-8 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-sm uppercase tracking-wider rounded-xl shadow-[0_0_25px_rgba(57,255,20,0.4)] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] cursor-pointer"
+              onClick={() => onStartCustomizing(heroHoodie, heroColor)}
+              className="w-full py-4 px-6 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-sm uppercase tracking-wider rounded-xl shadow-[0_0_30px_rgba(57,255,20,0.45)] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] cursor-pointer"
             >
-              <span>Enter Design Studio Now</span>
+              <span>ENTER DESIGN STUDIO NOW</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
+
+            {/* Secondary Dark Model Browser CTA */}
             <button
               type="button"
               onClick={onBrowseCatalogue}
-              className="py-3 px-6 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl border border-neutral-800 hover:border-neutral-700 transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 px-6 bg-[#14171f] hover:bg-neutral-800 text-white font-heading font-bold text-xs uppercase tracking-wider rounded-xl border border-neutral-700/80 hover:border-neutral-500 transition cursor-pointer flex items-center justify-center gap-2.5"
             >
-              <Compass className="w-3.5 h-3.5 text-neutral-400" />
-              <span>Browse All Models</span>
+              <Compass className="w-4 h-4 text-neutral-400" />
+              <span>BROWSE ALL MODELS</span>
             </button>
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          4. HOW IT WORKS
+          3. HOW IT WORKS
       ========================================================================= */}
       <section className="space-y-6">
         <div className="text-center max-w-xl mx-auto space-y-2">
@@ -501,7 +491,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* =========================================================================
-          5. WHAT WE DO (PRINT METHODS)
+          4. WHAT WE DO (PRINT METHODS)
       ========================================================================= */}
       <section className="space-y-6">
         <div className="text-center max-w-2xl mx-auto space-y-2">
@@ -617,7 +607,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* =========================================================================
-          6. FREQUENTLY ASKED QUESTIONS (DYNAMIC & ADMIN-EDITABLE)
+          5. FREQUENTLY ASKED QUESTIONS (DYNAMIC & ADMIN-EDITABLE)
           The 1st DTF question was removed as requested.
       ========================================================================= */}
       <section className="space-y-6 max-w-3xl mx-auto">
@@ -683,7 +673,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </section>
 
       {/* =========================================================================
-          7. ORDER TRACKER QUICK BANNER
+          6. ORDER TRACKER QUICK BANNER
       ========================================================================= */}
       <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-r from-[#12151c] to-[#0e1014] border border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

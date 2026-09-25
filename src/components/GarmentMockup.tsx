@@ -68,6 +68,12 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     }, 2800);
   };
 
+  const isZipper =
+    imageType === 'zipper' ||
+    product?.imageType === 'zipper' ||
+    product?.id === 'zipper-hoodie' ||
+    (product?.name ? product.name.toLowerCase().includes('zip') : false);
+
   // Get real hoodie photo URL
   const hoodiePhotoUrl = getHoodiePhoto(imageType, colorName, side, product);
 
@@ -393,7 +399,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative w-full aspect-[4/5] max-w-[430px] mx-auto rounded-2xl overflow-hidden border flex items-center justify-center select-none touch-canvas transition-all duration-300 ${canvasBgClass} ${
+      className={`relative w-full aspect-square max-w-[480px] mx-auto rounded-2xl overflow-hidden border flex items-center justify-center select-none touch-canvas transition-all duration-300 ${canvasBgClass} ${
         isHoveringDropZone ? 'ring-4 ring-[#39FF14] ring-opacity-80 scale-[1.01]' : ''
       }`}
     >
@@ -447,16 +453,20 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {/* ========================================================================= */}
       {/* 1. REAL AUTHENTIC HOODIE PHOTOGRAPHY (Accurate color and silhouette) */}
       {/* ========================================================================= */}
-      <div className="w-full h-full p-2 flex items-center justify-center relative pointer-events-none select-none">
+      <div className="w-full h-full p-1 flex items-center justify-center relative pointer-events-none select-none">
         <img
           src={hoodiePhotoUrl}
-          alt={`${product?.name || 'Salapeed'} ${colorName} hoodie - ${side} view`}
-          className="w-full h-full max-h-[96%] object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
+          alt={`${product?.name || (isZipper ? 'Adult Zip Hoodie' : 'Salapeed')} ${colorName} hoodie - ${side} view`}
+          className="w-full h-full object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
           draggable={false}
+          referrerPolicy="no-referrer"
           onError={(e) => {
             const target = e.currentTarget as HTMLImageElement;
-            if (!target.src.includes('fleece-hoodie-charcoal')) {
-              target.src = '/images/fleece-hoodie-charcoal.jpg';
+            const fallback = isZipper
+              ? '/images/hoodie-zip-black-front.jpg'
+              : '/images/hoodie-pullover-black-front.jpg';
+            if (target.src !== fallback) {
+              target.src = fallback;
             }
           }}
         />
@@ -469,18 +479,31 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {side === 'front' && (
         <div
           className="absolute z-20 pointer-events-none select-none flex flex-col items-center"
-          style={{ top: '29%', left: '59%', width: '16%' }}
+          style={{ top: '30%', left: '57%', width: '13%' }}
           title="Salapeed Official Brand Crest (Fixed Placement)"
         >
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-black/95 p-1 border-2 border-[#39FF14]/70 shadow-2xl flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-black/95 p-1 border-2 border-[#39FF14]/70 shadow-2xl flex items-center justify-center overflow-hidden">
             <img
               src="/salapeed-logo.jpeg"
               alt="Salapeed Brand Crest"
               className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
             />
           </div>
           <span className="mt-1 px-1.5 py-0.5 rounded bg-black/90 text-[7px] font-mono font-bold text-[#39FF14] uppercase border border-[#39FF14]/40 shadow whitespace-nowrap">
             Brand Logo (Fixed)
+          </span>
+        </div>
+      )}
+
+      {/* Kangaroo Pocket Seam Exclusion Guide (Front View) */}
+      {side === 'front' && (
+        <div
+          className="absolute z-20 pointer-events-none left-[26%] right-[26%] flex items-center justify-center border-t-2 border-dashed border-red-500/60 shadow-sm"
+          style={{ top: '53.5%' }}
+        >
+          <span className="text-[7.5px] font-mono font-bold text-red-400 bg-black/90 px-1.5 py-0.5 rounded -top-2.5 relative border border-red-500/40 shadow">
+            {isZipper ? 'Split Kangaroo Pockets • Keep Clear' : 'Kangaroo Pocket Seam • Keep Clear'}
           </span>
         </div>
       )}
@@ -504,15 +527,6 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
             {activeZone.name.toUpperCase()} (SAFE PRINT ZONE)
           </span>
         </div>
-
-        {/* Visual Exclusion Zones for Front View */}
-        {side === 'front' && (
-          <div className="absolute -bottom-4 left-0 right-0 border-b-2 border-dashed border-red-500/40 pointer-events-none flex justify-center">
-            <span className="text-[7px] font-mono text-red-400 bg-black/90 px-1 rounded -bottom-2 relative shadow">
-              Kangaroo Pocket Seam &bull; Exclusion Line
-            </span>
-          </div>
-        )}
 
         {/* Magnetic Snapping Guidelines */}
         {showSnapGuideX && (

@@ -157,30 +157,18 @@ export default function App() {
             currentScreen === 'home' ? 'max-w-6xl' : 'max-w-4xl'
           }`}
         >
-          {/* Logo & Brand Title */}
+          {/* Logo Badge (Styled with neon green border, uncropped and highly visible) */}
           <div
             onClick={() => setCurrentScreen('home')}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center cursor-pointer group py-0.5 select-none"
+            title="Salapeed Home"
           >
-            <div className="w-9 h-9 rounded-lg bg-black border border-[#39FF14]/50 p-1 flex items-center justify-center group-hover:border-[#39FF14] transition shadow-[0_0_10px_rgba(57,255,20,0.2)] overflow-hidden">
+            <div className="flex items-center justify-center px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-black border-2 border-[#39FF14] shadow-[0_0_14px_rgba(57,255,20,0.35)] transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_0_22px_rgba(57,255,20,0.55)]">
               <img
-                src="/salapeed-logo.jpeg"
+                src="/salapeed-logo.svg"
                 alt="Salapeed"
-                className="w-full h-full object-contain"
+                className="h-6 sm:h-7.5 w-auto max-w-[145px] sm:max-w-[165px] object-contain"
               />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 leading-none">
-                <span className="text-base font-heading font-black tracking-wider text-white uppercase group-hover:text-[#39FF14] transition">
-                  SALAPEED
-                </span>
-                <span className="text-[9px] font-mono px-1 rounded bg-[#39FF14] text-black font-extrabold uppercase">
-                  BH
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-neutral-400 block tracking-tight">
-                Custom Print Hoodies
-              </span>
             </div>
           </div>
 

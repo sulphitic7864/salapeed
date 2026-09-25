@@ -48,7 +48,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   const currentPhoto =
     product.colorPhotos?.[selectedColor] ||
     product.photoUrl ||
-    '/images/hoodie-zipper-navy.jpg';
+    '/images/hoodie-pullover-black-front.jpg';
 
   return (
     <div className="space-y-6 pb-14">

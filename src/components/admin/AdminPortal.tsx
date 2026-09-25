@@ -24,7 +24,6 @@ import {
   CheckCircle,
   FileText,
   Search,
-  ExternalLink,
   Lock,
   Database,
   ArrowLeft,
@@ -104,6 +103,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Spec Sheet & Print Shop Package Modal
   const [specModalOrder, setSpecModalOrder] = useState<Order | null>(null);
   const [emailModalOrder, setEmailModalOrder] = useState<Order | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState<string>('');
+  const [emailDispatchStatus, setEmailDispatchStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [copiedEmailFeedback, setCopiedEmailFeedback] = useState<boolean>(false);
+  const [activeEmailTab, setActiveEmailTab] = useState<'preview' | 'text'>('preview');
 
   // New graphic state
   const [newGraphicName, setNewGraphicName] = useState('');
@@ -591,8 +594,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     {/* View Automated Print Shop Package Email */}
                     <button
                       type="button"
-                      onClick={() => setEmailModalOrder(o)}
+                      onClick={() => {
+                        setEmailModalOrder(o);
+                        setEmailRecipient(config.shopEmail || 'workshop@salapeed.bh');
+                        setEmailDispatchStatus(
+                          o.statusHistory?.some((h) => h.note?.includes('emailed to') || h.note?.includes('dispatched to'))
+                            ? 'sent'
+                            : 'idle'
+                        );
+                        setCopiedEmailFeedback(false);
+                        setActiveEmailTab('preview');
+                      }}
                       className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 text-xs font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+                      title="Open full print shop email package and dispatch center"
                     >
                       <Mail className="w-3.5 h-3.5 text-[#39FF14]" />
                       <span>Print Shop Email Package</span>
@@ -1645,46 +1659,181 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </button>
             </div>
 
-            {/* Email Meta */}
+            {/* Email Meta & Multi-Channel Dispatch Center */}
             {(() => {
-              const emailPkg = generatePrintShopPackageEmail(emailModalOrder);
+              const targetEmail = emailRecipient || config.shopEmail || 'workshop@salapeed.bh';
+              const emailPkg = generatePrintShopPackageEmail(emailModalOrder, targetEmail);
+              const mailtoContent = emailPkg.mailtoBody || emailPkg.bodyText.slice(0, 750);
+              const mailtoUrl = `mailto:${targetEmail}?subject=${encodeURIComponent(
+                emailPkg.subject
+              )}&body=${encodeURIComponent(mailtoContent)}`;
+
+              const handleSendToClient = () => {
+                // 1. Mark order as dispatched in state & history
+                setEmailDispatchStatus('sent');
+                onUpdateOrderStatus(
+                  emailModalOrder.id,
+                  emailModalOrder.status,
+                  `Print shop production package emailed to ${targetEmail} at ${new Date().toLocaleTimeString()}`
+                );
+
+                // 2. Automatically copy full production spec text to clipboard
+                try {
+                  navigator.clipboard.writeText(emailPkg.bodyText);
+                  setCopiedEmailFeedback(true);
+                  setTimeout(() => setCopiedEmailFeedback(false), 4000);
+                } catch {
+                  // ignore
+                }
+
+                // 3. Trigger default mail app
+                try {
+                  window.location.href = mailtoUrl;
+                } catch {
+                  // anchor handles default
+                }
+              };
+
+              const handleCopyEmail = () => {
+                navigator.clipboard.writeText(emailPkg.bodyText);
+                setCopiedEmailFeedback(true);
+                setTimeout(() => setCopiedEmailFeedback(false), 3000);
+              };
+
               return (
                 <div className="space-y-4">
-                  <div className="p-3 rounded-lg bg-black/60 border border-neutral-800 text-xs font-mono space-y-1 text-neutral-300">
-                    <div><strong>To:</strong> {emailPkg.to}</div>
-                    <div><strong>From:</strong> {emailPkg.from}</div>
-                    <div><strong>Subject:</strong> {emailPkg.subject}</div>
-                    <div className="text-[#39FF14]">
-                      <strong>Attachments:</strong> {emailPkg.attachmentsCount} high-resolution artwork vector file(s) + HD front/back mockups
+                  {/* Status Banner when dispatched */}
+                  {emailDispatchStatus === 'sent' && (
+                    <div className="p-3.5 rounded-xl bg-emerald-950/80 border border-[#39FF14] text-xs font-mono text-emerald-200 flex items-center justify-between gap-3 animate-fadeIn shadow-[0_0_15px_rgba(57,255,20,0.2)]">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-[#39FF14] shrink-0" />
+                        <span>
+                          <strong>Dispatched!</strong> Production package emailed to <u>{targetEmail}</u> and logged in Order #{emailModalOrder.id} timeline.
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#39FF14] font-mono font-bold">Email Dispatched</span>
+                    </div>
+                  )}
+
+                  {/* Recipient & Metadata Bar */}
+                  <div className="p-3.5 rounded-xl bg-black/60 border border-neutral-800 text-xs space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-mono text-neutral-400 block mb-1 font-bold">
+                          Print Shop Recipient Email:
+                        </label>
+                        <input
+                          type="email"
+                          value={emailRecipient}
+                          onChange={(e) => setEmailRecipient(e.target.value)}
+                          placeholder="workshop@salapeed.bh"
+                          className="w-full px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-mono text-xs focus:border-[#39FF14] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-mono text-neutral-400 mb-1 font-bold">From Sender:</div>
+                        <div className="px-3 py-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800 text-neutral-300 font-mono text-xs truncate">
+                          {emailPkg.from}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+                      <div className="text-neutral-300 truncate max-w-md">
+                        <strong className="text-neutral-400">Subject:</strong> {emailPkg.subject}
+                      </div>
+                      <div className="text-[#39FF14] font-bold">
+                        {emailPkg.attachmentsCount} Artwork Vectors + Coordinates Attached
+                      </div>
                     </div>
                   </div>
 
-                  <div
-                    className="p-4 bg-black rounded-xl border border-neutral-800 overflow-hidden"
-                    dangerouslySetInnerHTML={{ __html: emailPkg.bodyHtml }}
-                  />
+                  {/* Preview Tabs */}
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveEmailTab('preview')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          activeEmailTab === 'preview'
+                            ? 'bg-[#39FF14] text-black font-heading font-black'
+                            : 'bg-neutral-900 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        Visual Spec Sheet Preview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveEmailTab('text')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          activeEmailTab === 'text'
+                            ? 'bg-[#39FF14] text-black font-heading font-black'
+                            : 'bg-neutral-900 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        Plain Text Message
+                      </button>
+                    </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
                     <button
                       type="button"
-                      onClick={() => {
-                        const subject = encodeURIComponent(emailPkg.subject);
-                        const body = encodeURIComponent(`Please review the production order #${emailModalOrder.id} spec sheet and render files.`);
-                        window.open(`mailto:${emailPkg.to}?subject=${subject}&body=${body}`, '_blank');
-                      }}
-                      className="px-4 py-2 bg-[#39FF14] text-black font-heading font-black text-xs uppercase rounded-lg hover:bg-[#32e012] transition cursor-pointer flex items-center gap-1.5"
+                      onClick={handleCopyEmail}
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-mono text-neutral-300 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Send to Print Shop Email Client</span>
+                      {copiedEmailFeedback ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-[#39FF14]" />
+                          <span className="text-[#39FF14] font-bold">Copied to Clipboard!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-neutral-400" />
+                          <span>Copy Message Text</span>
+                        </>
+                      )}
                     </button>
+                  </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setEmailModalOrder(null)}
-                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
-                    >
-                      Close Preview
-                    </button>
+                  {/* Body Content */}
+                  {activeEmailTab === 'preview' ? (
+                    <div
+                      className="p-4 bg-black rounded-xl border border-neutral-800 overflow-hidden max-h-[46vh] overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: emailPkg.bodyHtml }}
+                    />
+                  ) : (
+                    <textarea
+                      readOnly
+                      value={emailPkg.bodyText}
+                      rows={14}
+                      className="w-full p-4 rounded-xl bg-black border border-neutral-800 text-xs font-mono text-neutral-200 select-all focus:outline-none resize-none leading-relaxed"
+                    />
+                  )}
+
+                  {/* Send Options Action Bar - ONLY the asked button */}
+                  <div className="pt-3 border-t border-neutral-800 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      {/* Send to Print Shop Email Client (Only Asked Button) */}
+                      <a
+                        href={mailtoUrl}
+                        onClick={handleSendToClient}
+                        className="px-4 py-2.5 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-xs uppercase tracking-wider rounded-lg transition cursor-pointer flex items-center gap-2 shadow-[0_0_15px_rgba(57,255,20,0.3)] hover:scale-[1.01]"
+                        title={`Send production package to ${targetEmail}`}
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Send to Print Shop Email Client</span>
+                      </a>
+
+                      <div className="flex items-center gap-3 text-xs font-mono text-neutral-400">
+                        <span>Recipient: <strong className="text-white">{targetEmail}</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => setEmailModalOrder(null)}
+                          className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 hover:text-white transition cursor-pointer text-xs"
+                        >
+                          Close Preview
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

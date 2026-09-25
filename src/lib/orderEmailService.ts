@@ -7,6 +7,8 @@ export interface EmailSimulation {
   subject: string;
   sentAt: string;
   bodyHtml: string;
+  bodyText: string;
+  mailtoBody?: string;
   hasArtworkAttachments: boolean;
   attachmentsCount: number;
 }
@@ -69,6 +71,31 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
     })
     .join('');
 
+  const itemsSummaryText = order.items
+    .map(
+      (it, idx) =>
+        `${idx + 1}. ${it.productName} - Size: ${it.size}, Color: ${it.color}, Qty: ${it.qty}, Total: BD ${(it.unitPrice * it.qty).toFixed(3)}`
+    )
+    .join('\n');
+
+  const customerBodyText = `Hello ${order.customerName},
+
+Thank you for your order #${order.id} with Salapeed!
+Your custom hoodie is now queued for high-definition printing and stitching at our Bahrain workshop.
+
+ORDER SUMMARY:
+${itemsSummaryText}
+
+Subtotal: BD ${order.subtotal.toFixed(3)}
+Delivery Fee: BD ${order.deliveryFee.toFixed(3)}
+Total Paid: BD ${order.total.toFixed(3)} (BenefitPay Verified)
+
+Delivery Destination:
+${order.customerAddress}
+Contact Phone: ${order.customerPhone}
+
+Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.website}`;
+
   return {
     to: recipient,
     from: 'orders@salapeed.bh',
@@ -76,6 +103,7 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: false,
     attachmentsCount: 0,
+    bodyText: customerBodyText,
     bodyHtml: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #08090b; color: #ffffff; border-radius: 16px; border: 1px solid #1f242e; padding: 24px;">
         <div style="text-align: center; border-bottom: 1px solid #1f242e; padding-bottom: 20px; margin-bottom: 20px;">
@@ -133,8 +161,11 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
  * Contains front, back, and sleeve renderings with placement coordinates,
  * plus attached high-res artwork files.
  */
-export function generatePrintShopPackageEmail(order: Order): EmailSimulation {
-  const shopEmail = 'workshop@salapeed.bh';
+export function generatePrintShopPackageEmail(
+  order: Order,
+  customShopEmail?: string
+): EmailSimulation {
+  const shopEmail = customShopEmail || 'workshop@salapeed.bh';
 
   // Count attached files (high-res artwork elements)
   const totalArtworks = order.items.reduce(
@@ -218,6 +249,67 @@ export function generatePrintShopPackageEmail(order: Order): EmailSimulation {
     })
     .join('');
 
+  const garmentsPlainText = order.items
+    .map((item, idx) => {
+      const placementsText = (item.placements || [])
+        .map(
+          (p, pIdx) =>
+            `   - Print #${pIdx + 1}: [${p.side.toUpperCase()} / ${p.zone}] ${p.type === 'text' ? `Text: "${p.textContent}" (${p.textFont})` : p.graphicName || 'Artwork SVG'} | Origin: X:${p.x}%, Y:${p.y}% | Scale: ${Math.round(p.scale * 100)}% | Rot: ${p.rotation}°`
+        )
+        .join('\n');
+
+      return `[JOB ITEM #${idx + 1}] ${item.productName}
+• Silhouette: ${item.imageType} (380 GSM Heavyweight Fleece)
+• Size: ${item.size} | Quantity: ${item.qty} | Color: ${item.color}
+• Print Placements & Coordinates:
+${placementsText || '   - Standard blank garment with Salapeed seal'}`;
+    })
+    .join('\n\n');
+
+  const printShopBodyText = `SALAPEED BAHRAIN WORKSHOP PRODUCTION JOB #${order.id}
+==================================================
+Date: ${new Date(order.createdAt).toLocaleString()}
+Payment Status: BenefitPay Verified (Total: BD ${order.total.toFixed(3)})
+Total Garments to Produce: ${order.items.reduce((a, b) => a + b.qty, 0)} Pieces
+
+CUSTOMER & DISPATCH DETAILS:
+--------------------------------------------------
+Customer Name: ${order.customerName}
+Phone Number: ${order.customerPhone}
+Delivery Address: ${order.customerAddress}
+${order.customerNotes ? `Customer Notes: ${order.customerNotes}\n` : ''}
+GARMENTS & PRINT SPECIFICATIONS:
+--------------------------------------------------
+${garmentsPlainText}
+
+HIGH-RESOLUTION ATTACHMENTS:
+--------------------------------------------------
+Total Artwork Attachments: ${totalArtworks} vector/SVG files
+Please review coordinates and proceed with printing & stitching.
+
+--
+Salapeed Automated Workshop Dispatch System
+Seef Workshop, Manama, Kingdom of Bahrain`;
+
+  const itemsSummaryShort = order.items
+    .map(
+      (it, idx) =>
+        `#${idx + 1}: ${it.qty}x ${it.productName} [${it.color}, Size ${it.size}]\nPlacements: ${(it.placements || []).map(p => `${p.side.toUpperCase()} (${p.zone}): ${p.type === 'text' ? `"${p.textContent}"` : p.graphicName || 'Artwork'}`).join(' | ') || 'Standard Salapeed seal'}`
+    )
+    .join('\n');
+
+  const printShopMailtoBody = `SALAPEED WORKSHOP PRODUCTION JOB #${order.id}
+Date: ${new Date(order.createdAt).toLocaleString()}
+Customer: ${order.customerName} (Phone: ${order.customerPhone})
+Delivery Address: ${order.customerAddress}
+${order.customerNotes ? `Notes: ${order.customerNotes}\n` : ''}Payment: BenefitPay Verified (BD ${order.total.toFixed(3)})
+
+GARMENTS TO PRODUCE (${order.items.reduce((a, b) => a + b.qty, 0)} Total):
+${itemsSummaryShort}
+
+Artwork: ${totalArtworks} high-res vector files on record.
+Workshop: Seef, Manama, Kingdom of Bahrain`;
+
   return {
     to: shopEmail,
     from: 'dispatch-system@salapeed.bh',
@@ -225,6 +317,8 @@ export function generatePrintShopPackageEmail(order: Order): EmailSimulation {
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: true,
     attachmentsCount: totalArtworks,
+    bodyText: printShopBodyText,
+    mailtoBody: printShopMailtoBody,
     bodyHtml: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 680px; margin: 0 auto; background: #07080a; color: #ffffff; border-radius: 12px; border: 2px solid #39FF14; padding: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding-bottom: 14px; margin-bottom: 16px;">

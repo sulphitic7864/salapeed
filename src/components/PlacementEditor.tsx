@@ -347,7 +347,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                   const thumbUrl =
                     p.colorPhotos?.[colorName] ||
                     p.photoUrl ||
-                    '/images/fleece-hoodie-charcoal.jpg';
+                    '/images/hoodie-pullover-black-front.jpg';
 
                   return (
                     <div
@@ -368,6 +368,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                         <img
                           src={thumbUrl}
                           alt={p.name}
+                          referrerPolicy="no-referrer"
                           className="w-full h-full object-contain filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
                         />
                       </div>
