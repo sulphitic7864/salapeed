@@ -104,7 +104,7 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
       </div>
 
       {/* LOWER FLOATING CARD: Product Title & Interactive Color Swatches */}
-      <div className="relative z-10 px-4 sm:px-6 pb-2">
+      <div className="relative z-10 px-4 sm:px-6 pb-2 -mt-1">
         <div
           className="bg-[#f7f5f0] border border-[#e3dfd5] rounded-xl p-3 sm:p-3.5 flex items-center justify-between gap-3"
           style={{
@@ -114,7 +114,7 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
         >
           {/* Product Title */}
           <div>
-            <h3 className="font-heading font-black text-sm sm:text-base tracking-widest text-[#15171a] uppercase">
+            <h3 className="font-heading font-black text-sm sm:text-base tracking-wider text-[#15171a] uppercase leading-tight">
               {title}
             </h3>
           </div>
@@ -158,8 +158,8 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
       </div>
 
       {/* SIZES AVAILABLE ROW */}
-      <div className="relative z-10 px-4 sm:px-6 py-2 text-center">
-        <div className="text-[11px] sm:text-xs font-mono font-semibold text-neutral-700 tracking-wider">
+      <div className="relative z-10 px-4 sm:px-6 py-2.5 text-center">
+        <div className="text-[11px] sm:text-xs font-mono font-bold text-neutral-800 tracking-wider">
           {product.kind === 'kids'
             ? 'Sizes Available: 2 Years to 12 years'
             : `Sizes Available: ${product.sizes.join(', ')}`}
@@ -168,10 +168,10 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
 
       {/* ACTION / CUSTOMIZE BUTTON IF APPLICABLE */}
       {onCustomize && (
-        <div className="relative z-10 px-4 sm:px-6 pb-3 pt-1">
+        <div className="relative z-10 px-4 sm:px-6 pb-3 pt-0.5">
           <button
             onClick={() => onCustomize(product, activeColor)}
-            className="w-full py-2.5 px-4 bg-[#14161a] hover:bg-black text-white font-heading font-black text-xs uppercase tracking-widest rounded-xl transition flex items-center justify-center gap-2 shadow-lg cursor-pointer group"
+            className="w-full py-3 px-4 bg-[#14161a] hover:bg-black text-white font-heading font-black text-xs uppercase tracking-widest rounded-xl transition flex items-center justify-center gap-2 shadow-lg cursor-pointer group"
           >
             <span>Customize this {product.name} ({activeColor})</span>
             <ArrowRight className="w-4 h-4 text-[#39FF14] group-hover:translate-x-1 transition-transform" />
@@ -180,7 +180,7 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
       )}
 
       {/* FOOTER BAR: Official Salapeed Contact Details */}
-      <div className="relative z-10 bg-[#dfdad0]/80 backdrop-blur-sm border-t border-[#d3cdc0] px-4 py-2.5 flex items-center justify-between text-[11px] font-mono text-neutral-800">
+      <div className="relative z-10 bg-[#dfdad0]/95 backdrop-blur-sm border-t border-[#d3cdc0] px-4 py-3 flex items-center justify-between text-[11px] font-mono text-neutral-800">
         {/* Phone / Call */}
         <a
           href={`tel:${SALAPEED_BRAND.phone.replace(/[^0-9+]/g, '')}`}

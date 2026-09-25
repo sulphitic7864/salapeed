@@ -193,7 +193,7 @@ export const CartView: React.FC<CartViewProps> = ({
       {/* Assurance Note */}
       <div className="p-3 bg-neutral-900/60 rounded-xl border border-neutral-800 flex items-center gap-2.5 text-xs text-neutral-400">
         <ShieldCheck className="w-5 h-5 text-[#39FF14] shrink-0" />
-        <span>Guest checkout available • BenefitPay & Cash on Delivery accepted.</span>
+        <span>Guest checkout available &bull; BenefitPay accepted exclusively (zero transaction fees).</span>
       </div>
     </div>
   );

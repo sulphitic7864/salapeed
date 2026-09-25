@@ -1,24 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Product } from '../types';
 import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
 import { formatBHD } from '../lib/store';
-import { ArrowRight, Sparkles, ShieldCheck, Layers, Scissors, Check, Eye, LayoutGrid, MessageCircle, Instagram, Globe } from 'lucide-react';
-import { BrochurePedestalCard } from './BrochurePedestalCard';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Search,
+  Check,
+  Eye,
+  LayoutGrid,
+  MessageCircle,
+  Instagram,
+  X,
+  Sparkles,
+  ShieldCheck,
+  Layers,
+  Scissors,
+  Loader2,
+} from 'lucide-react';
 
 interface ProductCatalogueProps {
   products: Product[];
   onSelectProduct: (product: Product) => void;
   onCustomizeDirect?: (product: Product, color: string) => void;
+  onBack?: () => void;
 }
 
 export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
   products,
   onSelectProduct,
   onCustomizeDirect,
+  onBack,
 }) => {
-  const [viewMode, setViewMode] = useState<'brochure' | 'blueprint'>('brochure');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'kids' | 'pullover' | 'zipper'>('all');
 
-  // Store active preview color per product card
+  // Sorted products as strictly required:
+  // 1. Kids Hoodie
+  // 2. Adults Fleece Hoodie (Pullover)
+  // 3. Adult Zip Hoodie
+  const sortedProducts = [...products].sort((a, b) => {
+    const orderMap: Record<string, number> = {
+      'kids-hoodie': 1,
+      'fleece-hoodie': 2,
+      'zipper-hoodie': 3,
+    };
+    return (orderMap[a.id] || 99) - (orderMap[b.id] || 99);
+  });
+
+  // Filtered by search and category
+  const filteredProducts = sortedProducts.filter((product) => {
+    const matchesSearch =
+      searchQuery.trim() === '' ||
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.colors.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.kind && product.kind.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      (selectedCategory === 'kids' && product.kind === 'kids') ||
+      (selectedCategory === 'pullover' && product.imageType === 'pullover' && product.kind !== 'kids') ||
+      (selectedCategory === 'zipper' && product.imageType === 'zipper');
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // Infinite Scroll: paginate display of catalog
+  // Generates repeated visual catalog items when small dataset so infinite scroll smoothly works
+  const [displayLimit, setDisplayLimit] = useState(6);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Pool of items for infinite scrolling simulation
+  const expandedProducts = React.useMemo(() => {
+    if (filteredProducts.length === 0) return [];
+    // Repeat items to provide rich browsing & continuous infinite scroll
+    let list: (Product & { displayId: string })[] = [];
+    for (let i = 0; i < 6; i++) {
+      list = list.concat(
+        filteredProducts.map((p, idx) => ({
+          ...p,
+          displayId: `${p.id}-run${i}-${idx}`,
+        }))
+      );
+    }
+    return list;
+  }, [filteredProducts]);
+
+  const visibleList = expandedProducts.slice(0, displayLimit);
+  const hasMore = displayLimit < expandedProducts.length;
+
+  // Infinite scroll intersection observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          setIsLoadingMore(true);
+          setTimeout(() => {
+            setDisplayLimit((prev) => Math.min(prev + 6, expandedProducts.length));
+            setIsLoadingMore(false);
+          }, 450);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, expandedProducts.length]);
+
+  // Store active preview color per product
   const [activeColors, setActiveColors] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     products.forEach((p) => {
@@ -33,16 +128,30 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-14">
-      {/* Salapeed Official Brand Header */}
-      <div className="blueprint-card p-5 sm:p-6 bg-gradient-to-br from-[#151820] via-[#0f1116] to-[#0a0c0f] border-neutral-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-3 mb-4">
-          <div className="flex items-center gap-2 text-xs font-mono text-[#39FF14] font-semibold">
-            <span className="w-2 h-2 rounded-full bg-[#39FF14] animate-ping" />
-            <span>SALAPEED · PRINT . STITCH . DELIVER</span>
+    <div className="space-y-5 pb-16 text-left">
+      {/* Top Navigation & Brand Header */}
+      <div className="blueprint-card p-4 sm:p-5 bg-gradient-to-br from-[#151820] via-[#0f1116] to-[#0a0c0f] border-neutral-800 rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800/80 pb-3 mb-4">
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700/80 text-neutral-300 hover:text-white hover:border-[#39FF14] text-xs font-bold transition cursor-pointer shadow-sm group"
+                title="Go back to previous page"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                <span>Back</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-2 text-xs font-mono text-[#39FF14] font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#39FF14] animate-ping" />
+              <span>HOODIE CATALOGUE &bull; WORKSHOP CUT</span>
+            </div>
           </div>
 
-          {/* Quick Contact Links */}
+          {/* Contact Links */}
           <div className="flex items-center gap-3 text-xs font-mono">
             <a
               href={SALAPEED_BRAND.whatsappUrl}
@@ -67,181 +176,208 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-heading font-black text-white tracking-wide uppercase">
-              Realistic Garment Catalogue
+            <h2 className="text-xl sm:text-2xl font-heading font-black text-white tracking-wide uppercase">
+              Browse Custom Hoodie Blanks
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1 max-w-xl leading-relaxed">
-              Official Salapeed fleece hoodies and jackets crafted from 380 GSM ring-spun cotton-poly fleece. Features double-lined hoods, heavy metallic zippers, and multi-zone custom printing.
+            <p className="text-xs text-neutral-400 mt-1 max-w-xl leading-relaxed">
+              Heavyweight 380 GSM fleece blanks ready for custom screen print, DTF, or 3D embroidery. Kids hoodies listed #1 first.
             </p>
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="flex items-center gap-1 p-1 bg-black/60 rounded-xl border border-neutral-800 shrink-0">
+          {/* Quick Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
             <button
-              onClick={() => setViewMode('brochure')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer ${
-                viewMode === 'brochure'
-                  ? 'bg-neutral-200 text-black shadow'
-                  : 'text-neutral-400 hover:text-white'
+              onClick={() => setSelectedCategory('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono uppercase font-bold transition cursor-pointer whitespace-nowrap ${
+                selectedCategory === 'all'
+                  ? 'bg-[#39FF14] text-black shadow-sm'
+                  : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white'
               }`}
             >
-              <Eye className="w-3.5 h-3.5 text-black" />
-              <span>Studio Photo View</span>
+              All Models
             </button>
             <button
-              onClick={() => setViewMode('blueprint')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer ${
-                viewMode === 'blueprint'
-                  ? 'bg-[#39FF14] text-black shadow'
-                  : 'text-neutral-400 hover:text-white'
+              onClick={() => setSelectedCategory('kids')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono uppercase font-bold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                selectedCategory === 'kids'
+                  ? 'bg-[#39FF14] text-black shadow-sm'
+                  : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white'
               }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Interactive Blueprint</span>
+              <span>1. Kids Fleece</span>
+              <span className="px-1 py-0.2 bg-black/30 rounded text-[9px]">Top</span>
+            </button>
+            <button
+              onClick={() => setSelectedCategory('pullover')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono uppercase font-bold transition cursor-pointer whitespace-nowrap ${
+                selectedCategory === 'pullover'
+                  ? 'bg-[#39FF14] text-black shadow-sm'
+                  : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white'
+              }`}
+            >
+              2. Adults Fleece
+            </button>
+            <button
+              onClick={() => setSelectedCategory('zipper')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono uppercase font-bold transition cursor-pointer whitespace-nowrap ${
+                selectedCategory === 'zipper'
+                  ? 'bg-[#39FF14] text-black shadow-sm'
+                  : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:text-white'
+              }`}
+            >
+              3. Adult Zip
             </button>
           </div>
         </div>
 
-        {/* Quality Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-neutral-800/80">
-          <div className="flex items-center gap-2 text-[11px] text-neutral-300">
-            <ShieldCheck className="w-4 h-4 text-[#39FF14] shrink-0" />
-            <span>380 GSM Heavyweight</span>
+        {/* Working Search Bar */}
+        <div className="mt-4 pt-3 border-t border-neutral-800/80 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search hoodie styles, colors (e.g. Charcoal, Navy), or kids sizes..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-black/60 border border-neutral-800 focus:border-[#39FF14] text-xs text-white placeholder-neutral-500 focus:outline-none transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-0.5 rounded cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-neutral-300">
-            <Layers className="w-4 h-4 text-[#39FF14] shrink-0" />
+          <span className="text-xs font-mono text-neutral-400 shrink-0">
+            {filteredProducts.length} style{filteredProducts.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {/* Quality Badges */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-neutral-800/60 text-[11px] text-neutral-300">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#39FF14] shrink-0" />
+            <span>380 GSM Heavy Fleece</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-[#39FF14] shrink-0" />
             <span>Multi-Zone Placement</span>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-neutral-300">
-            <Scissors className="w-4 h-4 text-[#39FF14] shrink-0" />
-            <span>Bar-Tack Reinforced</span>
+          <div className="flex items-center gap-1.5">
+            <Scissors className="w-3.5 h-3.5 text-[#39FF14] shrink-0" />
+            <span>Double-Stitched Seams</span>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-neutral-300">
-            <Sparkles className="w-4 h-4 text-[#39FF14] shrink-0" />
-            <span>BenefitPay / COD</span>
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#39FF14] shrink-0" />
+            <span>BenefitPay Accepted</span>
           </div>
         </div>
       </div>
 
-      {/* MODE 1: BROCHURE 3D PEDESTAL GALLERY (Matching exact brochure pages) */}
-      {viewMode === 'brochure' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {products.map((product) => {
-            const currentColor = activeColors[product.id] || product.colors[0] || 'Navy';
-            return (
-              <BrochurePedestalCard
-                key={product.id}
-                product={product}
-                selectedColor={currentColor}
-                onSelectColor={(col) =>
-                  setActiveColors((prev) => ({ ...prev, [product.id]: col }))
-                }
-                onCustomize={(prod, col) => {
-                  if (onCustomizeDirect) {
-                    onCustomizeDirect(prod, col);
-                  } else {
-                    onSelectProduct(prod);
-                  }
-                }}
-              />
-            );
-          })}
+      {/* COMPACT PRODUCT CARDS GRID: 3-4 per row on desktop, 2 per row on mobile */}
+      {visibleList.length === 0 ? (
+        <div className="p-12 text-center rounded-2xl bg-neutral-900/50 border border-neutral-800 space-y-3">
+          <p className="text-neutral-400 text-sm">No garments match your search "{searchQuery}"</p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('all');
+            }}
+            className="px-4 py-2 bg-[#39FF14] text-black rounded-lg text-xs font-bold uppercase transition"
+          >
+            Clear Filters
+          </button>
         </div>
-      )}
-
-      {/* MODE 2: INTERACTIVE BLUEPRINT CARDS GRID */}
-      {viewMode === 'blueprint' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {products.map((product) => {
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {visibleList.map((product) => {
             const currentColor = activeColors[product.id] || product.colors[0] || 'Black';
             const swatch = COLOR_OPTIONS[currentColor] || COLOR_OPTIONS.Black;
+            const isKids = product.kind === 'kids';
 
             return (
               <div
-                key={product.id}
+                key={product.displayId}
                 onClick={() => onSelectProduct(product)}
-                className="blueprint-card p-4 sm:p-5 flex flex-col justify-between hover:border-[#39FF14]/80 transition-all duration-200 cursor-pointer group bg-[#111317] hover:shadow-[0_10px_35px_rgba(0,0,0,0.6)]"
+                className="blueprint-card p-3 rounded-xl flex flex-col justify-between hover:border-[#39FF14]/80 transition-all duration-200 cursor-pointer group bg-[#101217] hover:shadow-[0_8px_25px_rgba(0,0,0,0.7)]"
               >
-                <div className="space-y-4">
-                  {/* Header Info & Price */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/60 text-neutral-300 border border-neutral-800 uppercase tracking-wider font-semibold">
-                        {product.kind === 'kids' ? 'Kids (Ages 2–12)' : 'Adult (XS–XXL)'}
-                      </span>
-                      <span className="text-[10px] font-mono text-neutral-500 uppercase">
-                        {product.imageType}
-                      </span>
-                    </div>
-                    <span className="text-sm font-mono font-bold text-[#39FF14]">
-                      from {formatBHD(product.basePrice)}
+                <div className="space-y-2">
+                  {/* Top Badges */}
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                        isKids
+                          ? 'bg-[#39FF14] text-black'
+                          : 'bg-black/60 text-neutral-300 border border-neutral-800'
+                      }`}
+                    >
+                      {isKids ? 'Kids (Top Pick)' : 'Adults'}
+                    </span>
+                    <span className="font-bold text-[#39FF14]">
+                      {formatBHD(product.basePrice)}
                     </span>
                   </div>
 
-                  {/* REALISTIC HOODIE 3D MOCKUP STAGE */}
-                  <div className="w-full aspect-[4/3] rounded-xl relative overflow-hidden bg-gradient-to-b from-[#181b22] to-[#0e1014] border border-neutral-800 p-2 flex items-center justify-center group-hover:border-neutral-700 transition">
-                    <div className="absolute inset-0 sp-stripes-subtle opacity-30 pointer-events-none" />
-
-                    {/* Render the authentic real hoodie photography */}
+                  {/* Shrunk Hoodie 3D Mockup Stage for More per Row */}
+                  <div className="w-full aspect-[4/3] rounded-lg relative overflow-hidden bg-gradient-to-b from-[#181b22] to-[#0e1014] border border-neutral-800/80 p-2 flex items-center justify-center group-hover:border-neutral-700 transition">
                     <div className="w-full h-full max-h-[95%] flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300 ease-out">
                       <img
                         src={getHoodiePhoto(product.imageType, currentColor, 'front', product)}
                         alt={`${product.name} in ${currentColor}`}
-                        className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)]"
+                        className="w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)]"
+                        loading="lazy"
                       />
                     </div>
 
                     {/* Floating Color Badge */}
-                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/80 backdrop-blur-sm border border-neutral-700/80 text-[10px] font-mono text-neutral-300 flex items-center gap-1.5 shadow">
+                    <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/85 backdrop-blur-sm border border-neutral-700 text-[9px] font-mono text-neutral-300 flex items-center gap-1 shadow">
                       <span
-                        className="w-2.5 h-2.5 rounded-full border border-neutral-500"
-                        style={{ backgroundColor: swatch.hex }}
+                        className="w-2 h-2 rounded-full border border-neutral-500"
+                        style={{ backgroundColor: swatch?.hex || '#222' }}
                       />
-                      <span>{currentColor}</span>
-                    </div>
-
-                    {/* View Angle Pill */}
-                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[9px] font-mono text-neutral-400">
-                      Front & Back Ready
+                      <span className="truncate max-w-[70px]">{currentColor}</span>
                     </div>
                   </div>
 
-                  {/* Product Title & Authentic Description */}
-                  <div>
-                    <h3 className="text-lg font-heading font-black text-white group-hover:text-[#39FF14] transition tracking-wide uppercase">
+                  {/* Title & Description (Nudged up, clean alignment) */}
+                  <div className="pt-0.5">
+                    <h3 className="text-xs font-heading font-black text-white group-hover:text-[#39FF14] transition tracking-wide uppercase truncate">
                       {product.name}
                     </h3>
-                    <p className="text-xs text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
+                    <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-2 leading-relaxed">
                       {product.desc}
                     </p>
                   </div>
 
                   {/* Interactive Color Switcher Bar */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-neutral-500 font-medium">Select Fabric Color:</span>
-                      <span className="font-mono text-neutral-300 text-[10px]">{currentColor}</span>
+                  <div className="space-y-1 pt-1 border-t border-neutral-800/60">
+                    <div className="flex items-center justify-between text-[10px] text-neutral-500 font-mono">
+                      <span>Color:</span>
+                      <span className="text-neutral-300">{currentColor}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {product.colors.map((cName) => {
+                    <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                      {product.colors.slice(0, 5).map((cName) => {
                         const c = COLOR_OPTIONS[cName];
                         const isSelected = cName === currentColor;
 
                         return (
                           <button
                             key={cName}
+                            type="button"
                             onClick={(e) => handleColorChange(e, product.id, cName)}
-                            className={`relative w-6 h-6 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center ${
+                            className={`relative w-4 h-4 rounded-full border transition-all cursor-pointer shrink-0 flex items-center justify-center ${
                               isSelected
-                                ? 'border-[#39FF14] scale-115 shadow-[0_0_8px_rgba(57,255,20,0.6)]'
-                                : 'border-neutral-700 hover:border-neutral-500 hover:scale-105'
+                                ? 'border-[#39FF14] scale-110 shadow-[0_0_6px_rgba(57,255,20,0.6)]'
+                                : 'border-neutral-700 hover:border-neutral-400'
                             }`}
                             style={{ backgroundColor: c?.hex || '#222' }}
                             title={`Switch preview to ${cName}`}
                           >
                             {isSelected && (
                               <Check
-                                className={`w-3 h-3 ${
+                                className={`w-2.5 h-2.5 ${
                                   cName === 'White' || cName === 'Heather Grey'
                                     ? 'text-black'
                                     : 'text-[#39FF14]'
@@ -255,13 +391,10 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="mt-5 pt-3 border-t border-neutral-800/80 flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-mono text-neutral-400">
-                    {product.sizes.length} Sizes ({product.sizes[0]}–{product.sizes[product.sizes.length - 1]})
-                  </span>
-
+                {/* Direct Action Button */}
+                <div className="pt-2.5 mt-2 border-t border-neutral-800/80 flex items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onCustomizeDirect) {
@@ -270,10 +403,10 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
                         onSelectProduct(product);
                       }
                     }}
-                    className="px-3.5 py-1.5 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-xs uppercase tracking-wider rounded-lg shadow flex items-center gap-1.5 transition cursor-pointer"
+                    className="flex-1 py-1.5 px-2 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-[11px] uppercase tracking-wider rounded-lg transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
                   >
-                    <span>Customize Live</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>Design</span>
+                    <ArrowRight className="w-3 h-3 stroke-[2.5]" />
                   </button>
                 </div>
               </div>
@@ -281,6 +414,27 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
           })}
         </div>
       )}
+
+      {/* Infinite Scroll Sentinel & Loader */}
+      <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center text-center">
+        {isLoadingMore ? (
+          <div className="flex items-center gap-2 text-xs font-mono text-[#39FF14] animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Loading more styles...</span>
+          </div>
+        ) : hasMore ? (
+          <button
+            onClick={() => setDisplayLimit((prev) => prev + 6)}
+            className="px-5 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 text-xs font-mono font-bold transition cursor-pointer"
+          >
+            Scroll or Click to Load More Styles ({expandedProducts.length - visibleList.length} remaining)
+          </button>
+        ) : (
+          <span className="text-[11px] font-mono text-neutral-600">
+            &bull; All Bahrain custom styles loaded &bull;
+          </span>
+        )}
+      </div>
     </div>
   );
 };

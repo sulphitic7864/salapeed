@@ -9,6 +9,7 @@ interface CheckoutViewProps {
   config: AdminConfig;
   onPlaceOrder: (orderData: {
     customerName: string;
+    customerEmail?: string;
     customerPhone: string;
     customerAddress: string;
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
@@ -25,6 +26,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   onBack,
 }) => {
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
@@ -43,6 +45,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
       setErrorMsg('Please enter your full name.');
       return;
     }
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMsg('Please enter a valid email address to receive your hoodie rendering confirmation.');
+      return;
+    }
     if (!phone.trim()) {
       setErrorMsg('Please enter your mobile number.');
       return;
@@ -55,6 +61,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     setErrorMsg(null);
     onPlaceOrder({
       customerName: name.trim(),
+      customerEmail: email.trim(),
       customerPhone: phone.trim(),
       customerAddress: address.trim(),
       paymentMethod,
@@ -110,6 +117,23 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-white focus:outline-none focus:border-[#39FF14]"
                 required
               />
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-400 block mb-1">
+                Email Address (For Automated Design Renderings) <span className="text-[#39FF14]">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. ahmed@gmail.com"
+                className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-white focus:outline-none focus:border-[#39FF14]"
+                required
+              />
+              <span className="text-[10px] text-neutral-500 mt-1 block">
+                We'll email you high-definition visual renderings of your customized hoodie immediately upon placing your order.
+              </span>
             </div>
 
             <div>

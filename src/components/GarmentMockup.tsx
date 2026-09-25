@@ -10,6 +10,7 @@ import {
   Move,
   Layers,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface GarmentMockupProps {
@@ -58,6 +59,14 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
   const [showSnapGuideX, setShowSnapGuideX] = useState(false);
   const [showSnapGuideY, setShowSnapGuideY] = useState(false);
   const [activeDragCoords, setActiveDragCoords] = useState<{ x: number; y: number } | null>(null);
+  const [boundaryWarning, setBoundaryWarning] = useState<string | null>(null);
+
+  const triggerBoundaryWarning = (msg: string) => {
+    setBoundaryWarning(msg);
+    setTimeout(() => {
+      setBoundaryWarning((curr) => (curr === msg ? null : curr));
+    }, 2800);
+  };
 
   // Get real hoodie photo URL
   const hoodiePhotoUrl = getHoodiePhoto(imageType, colorName, side, product);
@@ -187,6 +196,9 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       }
 
       // Boundaries clamping (5% to 95%)
+      if (targetX < 5 || targetX > 95 || targetY < 5 || targetY > 95) {
+        triggerBoundaryWarning('⚠️ Artwork boundary reached! Placement kept within printable safe area.');
+      }
       const clampedX = Math.round(Math.min(95, Math.max(5, targetX)));
       const clampedY = Math.round(Math.min(95, Math.max(5, targetY)));
 
@@ -226,6 +238,11 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       const currentDist = Math.hypot(moveEv.clientX - center.x, moveEv.clientY - center.y);
       const ratio = currentDist / initialDist;
       const rawScale = initialScale * ratio;
+      if (rawScale > 2.0) {
+        triggerBoundaryWarning('⚠️ Maximum print size reached! Constrained to safe zone.');
+      } else if (rawScale < 0.4) {
+        triggerBoundaryWarning('⚠️ Minimum size reached.');
+      }
       const newScale = Math.round(Math.min(2.0, Math.max(0.4, rawScale)) * 100) / 100;
 
       if (onUpdateElementScale) {
@@ -359,18 +376,39 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
   // ALL elements for the CURRENT side are visible simultaneously!
   const visibleElements = elements.filter((el) => el.side === side);
 
+  // Invert canvas background based on garment color:
+  // Light background behind dark hoodie (Black, Navy, Charcoal, Red)
+  // Dark background behind light hoodie (White, Heather Grey)
+  const isLightGarment =
+    colorName.toLowerCase().includes('grey') ||
+    colorName.toLowerCase().includes('white');
+
+  const canvasBgClass = isLightGarment
+    ? 'bg-gradient-to-b from-[#141822] via-[#0f1218] to-[#090b0e] border-neutral-800 text-white shadow-[0_20px_50px_rgba(0,0,0,0.85)]'
+    : 'bg-gradient-to-b from-[#f8fafc] via-[#f1f5f9] to-[#e2e8f0] border-neutral-300 text-neutral-900 shadow-[0_20px_50px_rgba(0,0,0,0.18)]';
+
   return (
     <div
       ref={containerRef}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative w-full aspect-[4/5] max-w-[430px] mx-auto rounded-2xl overflow-hidden bg-gradient-to-b from-[#13161c] via-[#0f1117] to-[#0a0c10] border border-neutral-800 shadow-[0_20px_50px_rgba(0,0,0,0.85)] flex items-center justify-center select-none touch-canvas transition-all ${
+      className={`relative w-full aspect-[4/5] max-w-[430px] mx-auto rounded-2xl overflow-hidden border flex items-center justify-center select-none touch-canvas transition-all duration-300 ${canvasBgClass} ${
         isHoveringDropZone ? 'ring-4 ring-[#39FF14] ring-opacity-80 scale-[1.01]' : ''
       }`}
     >
       {/* Background Technical Grid Pattern */}
-      <div className="absolute inset-0 sp-stripes-subtle opacity-25 pointer-events-none" />
+      <div className={`absolute inset-0 sp-stripes-subtle pointer-events-none ${isLightGarment ? 'opacity-25' : 'opacity-10'}`} />
+
+      {/* Boundary Warning Alert Banner */}
+      {boundaryWarning && (
+        <div className="absolute top-12 left-4 right-4 z-50 animate-bounce pointer-events-none">
+          <div className="bg-amber-500 text-black px-3 py-1.5 rounded-lg font-mono text-[10px] font-black text-center shadow-2xl flex items-center justify-center gap-1.5 border border-amber-600">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>{boundaryWarning}</span>
+          </div>
+        </div>
+      )}
 
       {/* Top Left View Angle & Garment Specs Header */}
       <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 pointer-events-none">
@@ -384,7 +422,9 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
       {/* Top Right Fabric Quality Tag */}
       <div className="absolute top-3 right-3 z-30 pointer-events-none hidden sm:block">
-        <span className="px-2 py-0.5 rounded-md bg-neutral-900/85 backdrop-blur-md text-[9px] font-mono text-neutral-300 border border-neutral-800 font-semibold">
+        <span className={`px-2 py-0.5 rounded-md backdrop-blur-md text-[9px] font-mono font-semibold border ${
+          isLightGarment ? 'bg-neutral-900/85 text-neutral-300 border-neutral-800' : 'bg-white/90 text-neutral-800 border-neutral-300 shadow-sm'
+        }`}>
           380 GSM HEAVYWEIGHT FLEECE
         </span>
       </div>
@@ -405,16 +445,15 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 1. REAL AUTHENTIC HOODIE PHOTOGRAPHY (No sketches or mock jackets) */}
+      {/* 1. REAL AUTHENTIC HOODIE PHOTOGRAPHY (Accurate color and silhouette) */}
       {/* ========================================================================= */}
       <div className="w-full h-full p-2 flex items-center justify-center relative pointer-events-none select-none">
         <img
           src={hoodiePhotoUrl}
           alt={`${product?.name || 'Salapeed'} ${colorName} hoodie - ${side} view`}
-          className="w-full h-full max-h-[96%] object-contain filter drop-shadow-[0_12px_32px_rgba(0,0,0,0.9)] transition-all duration-300"
+          className="w-full h-full max-h-[96%] object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
           draggable={false}
           onError={(e) => {
-            // Safe fallback to pullover charcoal if image fails
             const target = e.currentTarget as HTMLImageElement;
             if (!target.src.includes('fleece-hoodie-charcoal')) {
               target.src = '/images/fleece-hoodie-charcoal.jpg';
@@ -422,6 +461,29 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
           }}
         />
       </div>
+
+      {/* ========================================================================= */}
+      {/* 1.5 FIXED SALAPEED BRAND LOGO (Left Chest - Always visible on Front View) */}
+      {/* Customer safe print zones exclude this area completely */}
+      {/* ========================================================================= */}
+      {side === 'front' && (
+        <div
+          className="absolute z-20 pointer-events-none select-none flex flex-col items-center"
+          style={{ top: '29%', left: '59%', width: '16%' }}
+          title="Salapeed Official Brand Crest (Fixed Placement)"
+        >
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-black/95 p-1 border-2 border-[#39FF14]/70 shadow-2xl flex items-center justify-center overflow-hidden">
+            <img
+              src="/salapeed-logo.jpeg"
+              alt="Salapeed Brand Crest"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <span className="mt-1 px-1.5 py-0.5 rounded bg-black/90 text-[7px] font-mono font-bold text-[#39FF14] uppercase border border-[#39FF14]/40 shadow whitespace-nowrap">
+            Brand Logo (Fixed)
+          </span>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. PRINT-SAFE BOUNDING BOX & ACTIVE DRAG-AND-DROP CANVAS */}
@@ -437,35 +499,19 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         }}
       >
         {/* Dashed Print-Safe Boundary Box */}
-        <div className="absolute inset-0 border-2 border-dashed border-[#39FF14]/80 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.22)]">
+        <div className="absolute inset-0 border-2 border-dashed border-[#39FF14]/85 rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.22)]">
           <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/95 text-[#39FF14] text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-[#39FF14]/50 shadow-md">
             {activeZone.name.toUpperCase()} (SAFE PRINT ZONE)
           </span>
         </div>
 
-        {/* Visual Exclusion Zones for Front View (Reserved Logo Badge Area & Pocket Buffer) */}
+        {/* Visual Exclusion Zones for Front View */}
         {side === 'front' && (
-          <>
-            {/* Reserved Logo Area Exclusion (Chest Badge) when printing on Centre Chest */}
-            {activeZone.id === 'front-centre' && (
-              <div
-                className="absolute -right-20 top-0 w-16 h-16 border border-dashed border-neutral-600/70 bg-neutral-900/30 rounded-lg p-1 flex flex-col items-center justify-center text-center pointer-events-none"
-                title="Reserved Area for Brand Crest / Logo Badge"
-              >
-                <span className="text-[7px] font-mono uppercase text-neutral-400 font-bold leading-tight">
-                  Reserved for Logo Badge
-                </span>
-                <span className="text-[6px] font-mono text-neutral-500 mt-0.5">(Exclusion)</span>
-              </div>
-            )}
-
-            {/* Kangaroo Pocket Seam Exclusion Buffer Line */}
-            <div className="absolute -bottom-4 left-0 right-0 border-b-2 border-dashed border-red-500/40 pointer-events-none flex justify-center">
-              <span className="text-[7px] font-mono text-red-400/80 bg-black/80 px-1 rounded -bottom-2 relative">
-                Kangaroo Pocket Seam &bull; Exclusion Line
-              </span>
-            </div>
-          </>
+          <div className="absolute -bottom-4 left-0 right-0 border-b-2 border-dashed border-red-500/40 pointer-events-none flex justify-center">
+            <span className="text-[7px] font-mono text-red-400 bg-black/90 px-1 rounded -bottom-2 relative shadow">
+              Kangaroo Pocket Seam &bull; Exclusion Line
+            </span>
+          </div>
         )}
 
         {/* Magnetic Snapping Guidelines */}
@@ -495,55 +541,62 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                 cursor: dragMode === 'move' ? 'grabbing' : 'grab',
               }}
             >
-              {/* INTERACTIVE TRANSFORMER BOUNDING BOX & HANDLES */}
+              {/* INTERACTIVE TRANSFORMER BOUNDING BOX & PROMINENT DIRECT HANDLES */}
               {isSelected && !readOnly && (
-                <div className="absolute -inset-3.5 border-2 border-[#39FF14] rounded-lg pointer-events-none shadow-[0_0_16px_rgba(57,255,20,0.6)]">
-                  {/* Top Rotation Handle */}
-                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto">
+                <div className="absolute -inset-4 border-2 border-[#39FF14] rounded-lg pointer-events-none shadow-[0_0_20px_rgba(57,255,20,0.7)]">
+                  {/* Top Attached Rotate Handle (Direct Rotate & Drag Handle) */}
+                  <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto">
                     <button
+                      type="button"
                       onPointerDown={(e) => handlePointerDownRotate(e, elem)}
-                      className="w-5 h-5 rounded-full bg-black border-2 border-[#39FF14] text-[#39FF14] flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-125 transition shadow-lg"
-                      title="Drag to Rotate Angle"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onUpdateElementRotation) {
+                          onUpdateElementRotation(elem.id, ((elem.rotation || 0) + 15) % 360);
+                        }
+                      }}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black hover:bg-neutral-900 border-2 border-[#39FF14] text-[#39FF14] flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-115 active:scale-95 transition shadow-2xl"
+                      title="Rotate Artwork (Click for +15° or Drag to angle)"
                     >
-                      <RotateCcw className="w-2.5 h-2.5" />
+                      <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                     <div className="w-0.5 h-2 bg-[#39FF14]" />
                   </div>
 
-                  {/* PROMINENT DELETE BUTTON FOR SELECTED ELEMENT */}
-                  <div className="absolute -top-7 right-0 pointer-events-auto">
+                  {/* PROMINENT DIRECT DELETE BUTTON ATTACHED TO ELEMENT */}
+                  <div className="absolute -top-9 right-0 pointer-events-auto">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onDeleteElement) onDeleteElement(elem.id);
                       }}
-                      className="w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center cursor-pointer hover:scale-125 transition shadow-lg border border-red-300"
-                      title="Delete Element (Del / Backspace)"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center cursor-pointer hover:scale-115 active:scale-95 transition shadow-2xl border-2 border-white"
+                      title="Delete Artwork (Del / Backspace)"
                     >
-                      <Trash2 className="w-2.5 h-2.5" />
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
 
                   {/* 4 Corner Scale Handles */}
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nwse-resize hover:scale-125 transition shadow"
+                    className="absolute -top-2 -left-2 w-4 h-4 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nwse-resize hover:scale-125 transition shadow-md"
                     title="Drag to Resize"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nesw-resize hover:scale-125 transition shadow"
+                    className="absolute -top-2 -right-2 w-4 h-4 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nesw-resize hover:scale-125 transition shadow-md"
                     title="Drag to Resize"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nesw-resize hover:scale-125 transition shadow"
+                    className="absolute -bottom-2 -left-2 w-4 h-4 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nesw-resize hover:scale-125 transition shadow-md"
                     title="Drag to Resize"
                   />
                   <div
                     onPointerDown={(e) => handlePointerDownScale(e, elem)}
-                    className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nwse-resize hover:scale-125 transition shadow"
+                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-black border-2 border-[#39FF14] rounded-sm pointer-events-auto cursor-nwse-resize hover:scale-125 transition shadow-md"
                     title="Drag to Resize"
                   />
 

@@ -64,10 +64,11 @@ export default function App() {
 
   // Navigation handlers
   const handleStartCustomizing = (prod?: Product, color?: string) => {
+    setPlacedElements([]); // Always start with a completely blank design
     if (prod && color) {
       setActiveProduct(prod);
       setSelectedColor(color);
-      setSelectedSize(prod.sizes[2] || prod.sizes[0]);
+      setSelectedSize(prod.sizes[0] || 'M');
       setCurrentScreen('customize');
     } else {
       // User must explicitly pick type, age, and color via modal
@@ -75,11 +76,11 @@ export default function App() {
     }
   };
 
-  const handleConfirmGarmentSelection = (product: Product, color: string, age: 'adult' | 'kids') => {
+  const handleConfirmGarmentSelection = (product: Product, color: string, size: string) => {
     setActiveProduct(product);
     setSelectedColor(color);
-    setSelectedSize(age === 'kids' ? (product.sizes[1] || '6Y') : (product.sizes[2] || 'L'));
-    setPlacedElements([]); // Start with clean canvas
+    setSelectedSize(size);
+    setPlacedElements([]); // Start with completely blank canvas
     setIsGarmentModalOpen(false);
     setCurrentScreen('customize');
   };
@@ -87,7 +88,7 @@ export default function App() {
   const handleSelectProduct = (prod: Product) => {
     setActiveProduct(prod);
     setSelectedColor(prod.colors[0] || 'Black');
-    setSelectedSize(prod.sizes[2] || prod.sizes[0]);
+    setSelectedSize(prod.sizes[0] || 'M');
     setCurrentScreen('product-detail');
   };
 
@@ -117,11 +118,14 @@ export default function App() {
       summary: placementsSummary,
     });
 
+    // Reset design elements for the next garment so it starts completely blank!
+    setPlacedElements([]);
     setCurrentScreen('cart');
   };
 
   const handlePlaceOrder = (orderData: {
     customerName: string;
+    customerEmail?: string;
     customerPhone: string;
     customerAddress: string;
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
@@ -129,6 +133,7 @@ export default function App() {
   }) => {
     const newOrder = store.createOrder({
       customerName: orderData.customerName,
+      customerEmail: orderData.customerEmail,
       customerPhone: orderData.customerPhone,
       customerAddress: orderData.customerAddress,
       paymentMethod: orderData.paymentMethod,
@@ -157,9 +162,9 @@ export default function App() {
             onClick={() => setCurrentScreen('home')}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-lg bg-black border border-[#39FF14]/50 p-1 flex items-center justify-center group-hover:border-[#39FF14] transition shadow-[0_0_10px_rgba(57,255,20,0.2)]">
+            <div className="w-9 h-9 rounded-lg bg-black border border-[#39FF14]/50 p-1 flex items-center justify-center group-hover:border-[#39FF14] transition shadow-[0_0_10px_rgba(57,255,20,0.2)] overflow-hidden">
               <img
-                src="/assets/salapeed-logo.svg"
+                src="/salapeed-logo.jpeg"
                 alt="Salapeed"
                 className="w-full h-full object-contain"
               />
@@ -257,6 +262,8 @@ export default function App() {
             onBrowseCatalogue={() => setCurrentScreen('catalogue')}
             onOpenTracker={() => setCurrentScreen('tracker')}
             onSelectProduct={handleSelectProduct}
+            faqs={store.faqs}
+            deliveryFee={store.config.deliveryFee}
           />
         )}
 
@@ -265,10 +272,12 @@ export default function App() {
           <ProductCatalogue
             products={store.products}
             onSelectProduct={handleSelectProduct}
+            onBack={() => setCurrentScreen('home')}
             onCustomizeDirect={(product, color) => {
               setActiveProduct(product);
               setSelectedColor(color);
-              setSelectedSize(product.sizes[0] || 'L');
+              setSelectedSize(product.sizes[0] || 'M');
+              setPlacedElements([]); // Start with clean canvas
               setCurrentScreen('customize');
             }}
           />
@@ -431,12 +440,17 @@ export default function App() {
             graphics={store.graphics}
             categories={store.categories}
             config={store.config}
+            faqs={store.faqs}
             onUpdateOrderStatus={store.updateOrderStatus}
             onUpdateConfig={store.updateConfig}
             onUpdateProduct={store.updateProduct}
             onAddGraphic={store.addGraphic}
+            onBulkAddGraphics={store.bulkAddGraphics}
             onDeleteGraphic={store.deleteGraphic}
             onAddCategory={store.addCategory}
+            onAddFaq={store.addFaq}
+            onUpdateFaq={store.updateFaq}
+            onDeleteFaq={store.deleteFaq}
             onExitAdmin={() => setCurrentScreen('home')}
           />
         )}

@@ -6,7 +6,10 @@ import {
   GraphicItem,
   AdminConfig,
   OrderStatus,
+  FaqItem,
 } from '../types';
+
+export type { FaqItem };
 import {
   INITIAL_PRODUCTS,
   INITIAL_GRAPHICS,
@@ -21,14 +24,53 @@ import {
 } from './supabase';
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'salapeed_products_v1',
+  PRODUCTS: 'salapeed_products_v2',
   GRAPHICS: 'salapeed_graphics_v1',
-  CATEGORIES: 'salapeed_categories_v1',
+  CATEGORIES: 'salapeed_categories_v2',
   CART: 'salapeed_cart_v1',
   ORDERS: 'salapeed_orders_v1',
   ADMIN_CONFIG: 'salapeed_admin_config_v1',
   ADMIN_AUTH: 'salapeed_admin_auth_v1',
+  FAQS: 'salapeed_faqs_v2',
 };
+
+export const INITIAL_FAQS: FaqItem[] = [
+  {
+    id: 'faq-moq',
+    q: 'Is there any minimum order quantity (MOQ)?',
+    a: 'No! There are absolutely no minimums. You can design and order just 1 single custom hoodie for yourself, a friend, or a gift. If you are ordering for a brand collection, esports team, university club, or corporate company, our volume discount tiers automatically apply in your cart as quantities increase.',
+  },
+  {
+    id: 'faq-fabric',
+    q: 'What hoodie fabric and GSM weight do you use?',
+    a: 'All Salapeed hoodies are crafted with our signature 380 GSM (grams per square meter) heavyweight cotton-rich fleece. They feature a soft brushed interior for all-day comfort, double-lined hoods with matching thick drawstrings, heavy-duty ribbed cuffs and hem, and reinforced double-needle stitching throughout.',
+  },
+  {
+    id: 'faq-start',
+    q: 'How do I get started designing my own custom hoodie?',
+    a: 'Simply click "Start Designing Hoodies" or "Go to Design Studio". Choose your preferred silhouette (Kids Pullover, Adults Fleece Pullover, or Adult Zip Hoodie), age/size, and base color. From there, you can drag and drop curated graphics, upload high-resolution logos, or type custom curved lettering. You can customize the Front, Back, and Sleeves with real-time 3D placement previews.',
+  },
+  {
+    id: 'faq-delivery',
+    q: 'How long does production and flat delivery take in Bahrain?',
+    a: 'Standard production takes 2 to 4 business days in our local Bahrain workshop. Once inspected and packed, our courier delivers directly to your doorstep anywhere in Bahrain with a flat delivery fee. We offer live in-app order status tracking from the moment your hoodie enters production until delivery.',
+  },
+  {
+    id: 'faq-payment',
+    q: 'What payment methods do you accept?',
+    a: 'We accept BenefitPay transfers exclusively for immediate zero-fee verification and express dispatch in Bahrain. Cash on delivery is not accepted.',
+  },
+  {
+    id: 'faq-artwork',
+    q: 'What artwork format should I upload for best results?',
+    a: 'For best print clarity, we recommend transparent PNG or vector SVG files at 300 DPI. If you upload a lower-resolution file, our live studio will gently flag it with an alert, and our Bahrain prepress workshop team will manually review and upscale your artwork before it goes onto the press.',
+  },
+  {
+    id: 'faq-sample',
+    q: 'Can I order a physical sample before placing a large team order?',
+    a: 'Yes! Because we have no minimum order quantities, you can easily order a single prototype piece with your exact graphics and embroidery specifications to test the sizing, fabric weight, and print finish before initiating a bulk team run.',
+  },
+];
 
 // Seed sample orders for demo & tracking verification
 const SAMPLE_ORDERS: Order[] = [
@@ -172,6 +214,7 @@ class Store {
   private categories: string[] = [];
   private cart: CartItem[] = [];
   private orders: Order[] = [];
+  private faqs: FaqItem[] = [];
   private config: AdminConfig = DEFAULT_ADMIN_CONFIG;
   private isAdminLoggedIn = false;
   private listeners: Set<() => void> = new Set();
@@ -185,21 +228,20 @@ class Store {
       const p = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (p) {
         const parsed: Product[] = JSON.parse(p);
-        this.products = parsed.map((item) => {
-          const init = INITIAL_PRODUCTS.find((ip) => ip.id === item.id);
-          if (init) {
+        // Guarantee Kids Hoodies are always first, followed by Adults Pullover and Zipper
+        this.products = INITIAL_PRODUCTS.map((init) => {
+          const match = parsed.find((item) => item.id === init.id);
+          if (match) {
             return {
               ...init,
-              ...item,
+              ...match,
               photoUrl: init.photoUrl,
               colorPhotos: init.colorPhotos,
               brochureTitle: init.brochureTitle,
               brochurePage: init.brochurePage,
-              sizes: init.sizes,
-              colors: init.colors,
             };
           }
-          return item;
+          return init;
         });
       } else {
         this.products = INITIAL_PRODUCTS;
@@ -209,13 +251,16 @@ class Store {
       this.graphics = g ? JSON.parse(g) : INITIAL_GRAPHICS;
 
       const c = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      this.categories = c ? JSON.parse(c) : INITIAL_CATEGORIES;
+      this.categories = c ? Array.from(new Set([...INITIAL_CATEGORIES, ...JSON.parse(c)])) : INITIAL_CATEGORIES;
 
       const ct = localStorage.getItem(STORAGE_KEYS.CART);
       this.cart = ct ? JSON.parse(ct) : [];
 
       const o = localStorage.getItem(STORAGE_KEYS.ORDERS);
       this.orders = o ? JSON.parse(o) : SAMPLE_ORDERS;
+
+      const f = localStorage.getItem(STORAGE_KEYS.FAQS);
+      this.faqs = f ? JSON.parse(f) : INITIAL_FAQS;
 
       const cfg = localStorage.getItem(STORAGE_KEYS.ADMIN_CONFIG);
       this.config = cfg ? { ...DEFAULT_ADMIN_CONFIG, ...JSON.parse(cfg) } : DEFAULT_ADMIN_CONFIG;
@@ -237,6 +282,7 @@ class Store {
       this.graphics = INITIAL_GRAPHICS;
       this.categories = INITIAL_CATEGORIES;
       this.orders = SAMPLE_ORDERS;
+      this.faqs = INITIAL_FAQS;
       this.config = DEFAULT_ADMIN_CONFIG;
     }
   }
@@ -329,6 +375,7 @@ class Store {
   // Orders operations
   public createOrder(orderData: {
     customerName: string;
+    customerEmail?: string;
     customerPhone: string;
     customerAddress: string;
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
@@ -343,6 +390,7 @@ class Store {
       id: orderId,
       createdAt: new Date().toISOString(),
       customerName: orderData.customerName,
+      customerEmail: orderData.customerEmail,
       customerPhone: orderData.customerPhone,
       customerAddress: orderData.customerAddress,
       paymentMethod: orderData.paymentMethod,
@@ -408,7 +456,7 @@ class Store {
   public addGraphic(graphic: Omit<GraphicItem, 'id'>) {
     const newG: GraphicItem = {
       ...graphic,
-      id: `g-custom-${Date.now()}`,
+      id: `g-custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       isCustomAdmin: true,
     };
     this.graphics = [newG, ...this.graphics];
@@ -416,6 +464,19 @@ class Store {
     syncGraphicToSupabase(newG);
     this.notify();
     return newG;
+  }
+
+  public bulkAddGraphics(newItems: Omit<GraphicItem, 'id'>[]) {
+    const created: GraphicItem[] = newItems.map((item, idx) => ({
+      ...item,
+      id: `g-bulk-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+      isCustomAdmin: true,
+    }));
+    this.graphics = [...created, ...this.graphics];
+    this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
+    created.forEach((g) => syncGraphicToSupabase(g));
+    this.notify();
+    return created;
   }
 
   public deleteGraphic(id: string) {
@@ -448,6 +509,33 @@ class Store {
       return p;
     });
     this.save(STORAGE_KEYS.PRODUCTS, this.products);
+    this.notify();
+  }
+
+  // FAQs Management
+  public getFaqs(): FaqItem[] {
+    return this.faqs;
+  }
+
+  public addFaq(faq: Omit<FaqItem, 'id'>) {
+    const newFaq: FaqItem = {
+      ...faq,
+      id: `faq-${Date.now()}`,
+    };
+    this.faqs = [...this.faqs, newFaq];
+    this.save(STORAGE_KEYS.FAQS, this.faqs);
+    this.notify();
+  }
+
+  public updateFaq(id: string, patch: Partial<FaqItem>) {
+    this.faqs = this.faqs.map((f) => (f.id === id ? { ...f, ...patch } : f));
+    this.save(STORAGE_KEYS.FAQS, this.faqs);
+    this.notify();
+  }
+
+  public deleteFaq(id: string) {
+    this.faqs = this.faqs.filter((f) => f.id !== id);
+    this.save(STORAGE_KEYS.FAQS, this.faqs);
     this.notify();
   }
 
@@ -485,6 +573,7 @@ export function useStore() {
     categories: store.getCategories(),
     cart: store.getCart(),
     orders: store.getOrders(),
+    faqs: store.getFaqs(),
     config: store.getConfig(),
     isAdmin: store.getAdminAuth(),
     addToCart: store.addToCart.bind(store),
@@ -495,10 +584,14 @@ export function useStore() {
     getOrderById: store.getOrderById.bind(store),
     updateOrderStatus: store.updateOrderStatus.bind(store),
     addGraphic: store.addGraphic.bind(store),
+    bulkAddGraphics: store.bulkAddGraphics.bind(store),
     deleteGraphic: store.deleteGraphic.bind(store),
     addCategory: store.addCategory.bind(store),
     updateConfig: store.updateConfig.bind(store),
     updateProduct: store.updateProduct.bind(store),
+    addFaq: store.addFaq.bind(store),
+    updateFaq: store.updateFaq.bind(store),
+    deleteFaq: store.deleteFaq.bind(store),
     adminLogin: store.adminLogin.bind(store),
     adminLogout: store.adminLogout.bind(store),
     loginAdmin: store.adminLogin.bind(store),

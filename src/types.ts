@@ -103,6 +103,7 @@ export interface Order {
   id: string; // e.g. SP-8421
   createdAt: string;
   customerName: string;
+  customerEmail?: string;
   customerPhone: string;
   customerAddress: string;
   paymentMethod: 'BenefitPay' | 'Benefit Transfer';
@@ -113,6 +114,14 @@ export interface Order {
   status: OrderStatus;
   statusHistory: { status: OrderStatus; timestamp: string; note?: string }[];
   customerNotes?: string;
+}
+
+export interface FaqItem {
+  id: string;
+  q: string;
+  a: string;
+  question?: string;
+  answer?: string;
 }
 
 export interface AdminConfig {
