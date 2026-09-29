@@ -606,7 +606,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       type="button"
                       onClick={() => {
                         setEmailModalOrder(o);
-                        setEmailRecipient(config.shopEmail || 'workshop@salapeed.bh');
+                        setEmailRecipient(config.shopEmail || 'workshop@salapeed.com');
                         setEmailDispatchStatus(
                           o.statusHistory?.some((h) => h.note?.includes('emailed to') || h.note?.includes('dispatched to'))
                             ? 'sent'
@@ -1693,7 +1693,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
             {/* Email Meta & Multi-Channel Dispatch Center */}
             {(() => {
-              const targetEmail = emailRecipient || config.shopEmail || 'workshop@salapeed.bh';
+              const targetEmail = emailRecipient || config.shopEmail || 'workshop@salapeed.com';
               const emailPkg = generatePrintShopPackageEmail(emailModalOrder, targetEmail);
               const mailtoContent = emailPkg.mailtoBody || emailPkg.bodyText.slice(0, 750);
               const mailtoUrl = `mailto:${targetEmail}?subject=${encodeURIComponent(
@@ -1758,7 +1758,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           type="email"
                           value={emailRecipient}
                           onChange={(e) => setEmailRecipient(e.target.value)}
-                          placeholder="workshop@salapeed.bh"
+                          placeholder="workshop@salapeed.com"
                           className="w-full px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-mono text-xs focus:border-[#39FF14] focus:outline-none"
                         />
                       </div>

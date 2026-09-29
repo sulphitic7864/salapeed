@@ -17,7 +17,7 @@ export interface EmailSimulation {
  * Builds the automated customer confirmation email showing renderings of their hoodie design
  */
 export function generateCustomerConfirmationEmail(order: Order): EmailSimulation {
-  const recipient = order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '.')}@customer.bh`;
+  const recipient = order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '.')}@customer.com`;
 
   const itemsHtml = order.items
     .map((item, idx) => {
@@ -110,7 +110,7 @@ Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.websi
 
   return {
     to: recipient,
-    from: 'orders@salapeed.bh',
+    from: 'orders@salapeed.com',
     subject: `Order Confirmed: #${order.id} — Your Custom Salapeed Hoodie is in Production!`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: false,
@@ -177,7 +177,7 @@ export function generatePrintShopPackageEmail(
   order: Order,
   customShopEmail?: string
 ): EmailSimulation {
-  const shopEmail = customShopEmail || 'workshop@salapeed.bh';
+  const shopEmail = customShopEmail || 'workshop@salapeed.com';
 
   // Count attached files (high-res artwork elements)
   const totalArtworks = order.items.reduce(
@@ -336,7 +336,7 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
 
   return {
     to: shopEmail,
-    from: 'dispatch-system@salapeed.bh',
+    from: 'dispatch-system@salapeed.com',
     subject: `[PRODUCTION PACKAGE] Order #${order.id} - ${order.customerName} (${order.items.reduce((a, b) => a + b.qty, 0)} Pcs)`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: true,

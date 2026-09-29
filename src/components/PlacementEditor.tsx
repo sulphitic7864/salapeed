@@ -159,7 +159,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       side: currentSide,
       zone: currentZone.name,
       type: 'text',
-      textContent: 'SALAPEED',
+      textContent: 'YOUR CUSTOM TEXT',
       textFont: 'condensed',
       textColor: '#39FF14',
       textCurve: false,
@@ -831,6 +831,73 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
             </div>
           </div>
 
+          {/* Specific Controls for Custom Text */}
+          {selectedElement.type === 'text' && (
+            <div className="space-y-3 pb-3 border-b border-neutral-800/80 bg-neutral-900/40 p-3 rounded-xl border border-[#39FF14]/30">
+              <div className="space-y-1">
+                <label htmlFor="custom-text-content" className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5 text-[#39FF14]" />
+                  <span>✏️ Custom Text Content (Type Anything):</span>
+                </label>
+                <input
+                  id="custom-text-content"
+                  type="text"
+                  value={selectedElement.textContent || ''}
+                  onChange={(e) => handleUpdateText({ textContent: e.target.value })}
+                  placeholder="Type your custom text or phrase..."
+                  className="w-full px-3.5 py-2.5 text-sm bg-black border-2 border-[#39FF14]/70 rounded-lg text-white font-extrabold focus:border-[#39FF14] focus:ring-2 focus:ring-[#39FF14]/30 focus:outline-none shadow-md"
+                  maxLength={40}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-400">Font Style</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {FONT_OPTIONS.map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => handleUpdateText({ textFont: f.key as any })}
+                      className={`p-2 text-xs rounded-lg border text-center transition cursor-pointer ${
+                        selectedElement.textFont === f.key
+                          ? 'bg-[#39FF14]/15 border-[#39FF14] text-white font-bold'
+                          : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <span style={{ fontFamily: f.family }}>{f.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-neutral-400">Ink Print Color</label>
+                <div className="flex items-center gap-2.5">
+                  {INK_COLORS.map((ic) => (
+                    <button
+                      key={ic.name}
+                      onClick={() => handleUpdateText({ textColor: ic.hex })}
+                      className={`w-7 h-7 rounded-full border-2 transition cursor-pointer relative ${
+                        selectedElement.textColor === ic.hex
+                          ? 'border-[#39FF14] scale-110 shadow-[0_0_8px_rgba(57,255,20,0.5)]'
+                          : 'border-neutral-700 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: ic.hex }}
+                      title={ic.name}
+                    />
+                  ))}
+                </div>
+              </div>
+              <label className="text-xs font-semibold text-neutral-400 flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!selectedElement.textCurve}
+                  onChange={(e) => handleUpdateText({ textCurve: e.target.checked })}
+                  className="w-4 h-4 accent-[#39FF14] rounded cursor-pointer"
+                />
+                <span>Curve Text Along Arc</span>
+              </label>
+            </div>
+          )}
+
           {/* Size / Scale Slider */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
@@ -880,76 +947,6 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
               </button>
             </div>
           </div>
-
-          {/* Specific Controls for Custom Text */}
-          {selectedElement.type === 'text' && (
-            <div className="space-y-3 pt-2 border-t border-neutral-800/80">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-400">Custom Text Content</label>
-                <input
-                  type="text"
-                  value={selectedElement.textContent || ''}
-                  onChange={(e) => handleUpdateText({ textContent: e.target.value })}
-                  placeholder="e.g. SALAPEED BAHRAIN"
-                  className="w-full px-3 py-2 text-sm bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:border-[#39FF14] focus:outline-none"
-                  maxLength={25}
-                />
-              </div>
-
-              {/* Font Choice */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-400">Font Style</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {FONT_OPTIONS.map((f) => (
-                    <button
-                      key={f.key}
-                      onClick={() => handleUpdateText({ textFont: f.key as any })}
-                      className={`p-2 text-xs rounded-lg border text-center transition cursor-pointer ${
-                        selectedElement.textFont === f.key
-                          ? 'bg-[#39FF14]/15 border-[#39FF14] text-white font-bold'
-                          : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      <span style={{ fontFamily: f.family }}>{f.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Ink Color Palette */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-neutral-400">Ink Print Color</label>
-                <div className="flex items-center gap-2.5">
-                  {INK_COLORS.map((ic) => (
-                    <button
-                      key={ic.name}
-                      onClick={() => handleUpdateText({ textColor: ic.hex })}
-                      className={`w-7 h-7 rounded-full border-2 transition cursor-pointer relative ${
-                        selectedElement.textColor === ic.hex
-                          ? 'border-[#39FF14] scale-110 shadow-[0_0_8px_rgba(57,255,20,0.5)]'
-                          : 'border-neutral-700 hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: ic.hex }}
-                      title={ic.name}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Arc / Curve Toggle */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="text-xs font-semibold text-neutral-400 flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!selectedElement.textCurve}
-                    onChange={(e) => handleUpdateText({ textCurve: e.target.checked })}
-                    className="w-4 h-4 accent-[#39FF14] rounded cursor-pointer"
-                  />
-                  <span>Curve Text Along Arc (Street Arch)</span>
-                </label>
-              </div>
-            </div>
-          )}
 
           {/* Quick Delete Element Action */}
           <div className="pt-2 border-t border-neutral-800/80">

@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { GarmentSide, PlantedElement, PrintZone, Product, GraphicItem } from '../types';
-import { getHoodiePhoto, PRINT_ZONES } from '../data/mockData';
-import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
+import { getHoodiePhoto } from '../data/mockData';
 import {
   RotateCcw,
   Maximize2,
@@ -99,7 +98,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
   // Curved text renderer
   const renderCurvedText = (text: string, font: string, color: string, curve: boolean) => {
-    const chars = (text || 'SALAPEED').split('');
+    const chars = (text || 'YOUR CUSTOM TEXT').split('');
     if (!curve || chars.length <= 1) {
       return (
         <span
@@ -114,7 +113,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
           }}
           className="text-sm sm:text-base font-black tracking-wider uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
         >
-          {text || 'SALAPEED'}
+          {text || 'YOUR CUSTOM TEXT'}
         </span>
       );
     }
@@ -157,6 +156,35 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     const cx = rect.left + (elem.x / 100) * rect.width;
     const cy = rect.top + (elem.y / 100) * rect.height;
     return { x: cx, y: cy };
+  };
+
+  const overlapsBrandLogo = (
+    elem: PlantedElement,
+    x: number,
+    y: number,
+    scale = elem.scale,
+    rotation = elem.rotation
+  ) => {
+    if (side !== 'front' || !containerRef.current || !printZoneRef.current) return false;
+    const canvas = containerRef.current.getBoundingClientRect();
+    const zone = printZoneRef.current.getBoundingClientRect();
+    if (!canvas.width || !canvas.height) return false;
+
+    const centerX = ((zone.left - canvas.left + (x / 100) * zone.width) / canvas.width) * 100;
+    const centerY = ((zone.top - canvas.top + (y / 100) * zone.height) / canvas.height) * 100;
+    const baseSize = elem.type === 'text'
+      ? { width: Math.max(48, (elem.textContent || '').length * 10 + 16), height: 32 }
+      : elem.type === 'upload'
+        ? { width: 130, height: 130 }
+        : { width: 112, height: 112 };
+    const angle = (rotation * Math.PI) / 180;
+    const width = (Math.abs(Math.cos(angle)) * baseSize.width + Math.abs(Math.sin(angle)) * baseSize.height) * scale;
+    const height = (Math.abs(Math.sin(angle)) * baseSize.width + Math.abs(Math.cos(angle)) * baseSize.height) * scale;
+    const halfWidth = (width / canvas.width) * 50;
+    const halfHeight = (height / canvas.height) * 50;
+
+    return centerX + halfWidth > 57 && centerX - halfWidth < 70 &&
+      centerY + halfHeight > 30 && centerY - halfHeight < 45;
   };
 
   // =========================================================================
@@ -202,6 +230,17 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         setShowSnapGuideY(true);
       } else {
         setShowSnapGuideY(false);
+      }
+
+      if (overlapsBrandLogo(elem, targetX, targetY)) {
+        triggerBoundaryWarning('Keep artwork clear of the fixed Salapeed logo.');
+        return;
+      }
+
+      // Protection for fixed Salapeed logo on front view (located at left: 57%, top: 30%)
+      if (side === 'front' && targetX > 54 && targetY >= 20 && targetY <= 50) {
+        targetX = 54;
+        triggerBoundaryWarning('⚠️ Salapeed logo area protected! Artwork kept clear of official brand crest.');
       }
 
       // Boundaries clamping (5% to 95%)
@@ -253,6 +292,11 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         triggerBoundaryWarning('⚠️ Minimum size reached.');
       }
       const newScale = Math.round(Math.min(2.0, Math.max(0.4, rawScale)) * 100) / 100;
+
+      if (overlapsBrandLogo(elem, elem.x, elem.y, newScale)) {
+        triggerBoundaryWarning('Artwork cannot overlap the fixed Salapeed logo.');
+        return;
+      }
 
       if (onUpdateElementScale) {
         onUpdateElementScale(elem.id, newScale);
@@ -462,22 +506,13 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {/* 1. REAL AUTHENTIC HOODIE PHOTOGRAPHY (Accurate color and silhouette) */}
       {/* ========================================================================= */}
       <div className="w-full h-full p-1 flex items-center justify-center relative pointer-events-none select-none">
-        {side === 'sleeve' ? (
-          <RealisticHoodieGraphic
-            imageType={imageType}
-            colorName={colorName}
-            side="sleeve"
-            className="filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)]"
-          />
-        ) : (
-          <img
-            src={hoodiePhotoUrl}
-            alt={`${product?.name || (isZipper ? 'Adult Zip Hoodie' : 'Salapeed')} ${colorName} hoodie - ${side} view`}
-            className="w-full h-full object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
-            draggable={false}
-            referrerPolicy="no-referrer"
-          />
-        )}
+        <img
+          src={hoodiePhotoUrl}
+          alt={`${product?.name || (isZipper ? 'Adult Zip Hoodie' : 'Salapeed')} ${colorName} hoodie - ${side} view`}
+          className="w-full h-full object-contain filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)] transition-all duration-300"
+          draggable={false}
+          referrerPolicy="no-referrer"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -486,21 +521,16 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {/* ========================================================================= */}
       {side === 'front' && (
         <div
-          className="absolute z-20 pointer-events-none select-none flex flex-col items-center"
-          style={{ top: '30%', left: '57%', width: '13%' }}
+          className="absolute z-50 pointer-events-none select-none"
+          style={{ top: '35%', left: '58%', width: '15%' }}
           title="Salapeed Official Brand Crest (Fixed Placement)"
         >
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-black/95 p-1 border-2 border-[#39FF14]/70 shadow-2xl flex items-center justify-center overflow-hidden">
-            <img
-              src="/salapeed-logo.jpeg"
-              alt="Salapeed Brand Crest"
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-          <span className="mt-1 px-1.5 py-0.5 rounded bg-black/90 text-[7px] font-mono font-bold text-[#39FF14] uppercase border border-[#39FF14]/40 shadow whitespace-nowrap">
-            Brand Logo (Fixed)
-          </span>
+          <img
+            src="/salapeed-logo.jpeg"
+            alt="Salapeed Brand Crest"
+            className="w-10 h-10 sm:w-15 sm:h-15 object-contain"
+            referrerPolicy="no-referrer"
+          />
         </div>
       )}
 
@@ -627,6 +657,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                   <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/95 text-[8px] font-mono text-[#39FF14] px-1.5 py-0.5 rounded border border-[#39FF14]/50 pointer-events-none shadow font-bold">
                     {Math.round(elem.scale * 100)}% · {elem.rotation}°
                   </div>
+
                 </div>
               )}
 
@@ -634,6 +665,10 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
               <div
                 onPointerDown={(e) => handlePointerDownMove(e, elem)}
                 onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectElement(elem.id);
+                }}
+                onDoubleClick={(e) => {
                   e.stopPropagation();
                   onSelectElement(elem.id);
                 }}
@@ -664,7 +699,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                   // 3. Custom Streetwear Arched / Condensed Typography
                   <div className="text-center whitespace-nowrap p-2 pointer-events-none">
                     {renderCurvedText(
-                      elem.textContent || 'SALAPEED',
+                      elem.textContent || 'YOUR CUSTOM TEXT',
                       elem.textFont || 'condensed',
                       elem.textColor || '#39FF14',
                       !!elem.textCurve

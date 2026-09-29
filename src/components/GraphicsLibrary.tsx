@@ -7,7 +7,7 @@ interface GraphicsLibraryProps {
   categories: string[];
   onSelectGraphic: (graphic: GraphicItem) => void;
   onSelectUpload: (imageUrl: string, fileName: string, isLowRes: boolean) => void;
-  onSelectText: () => void;
+  onSelectText: (customText?: string) => void;
   onBack: () => void;
 }
 
@@ -22,6 +22,8 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [customTextPrompt, setCustomTextPrompt] = useState('MY CUSTOM TEXT');
   const [dragActive, setDragActive] = useState(false);
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const [displayLimit, setDisplayLimit] = useState(6);
@@ -150,7 +152,7 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
         </button>
 
         <button
-          onClick={onSelectText}
+          onClick={() => setShowTextModal(true)}
           className="p-3 bg-[#13161c] hover:bg-[#1a1e27] border border-neutral-700/80 rounded-xl text-left transition cursor-pointer flex items-center gap-2.5 group"
         >
           <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/30 shrink-0 group-hover:scale-105 transition">
@@ -318,6 +320,66 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
 
             <div className="text-[11px] text-neutral-500">
               High resolution files (1000px+ width or 300dpi) provide the sharpest print on Bahrain blank garments.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Text Prompt Modal */}
+      {showTextModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-md bg-[#13161c] border border-neutral-700 rounded-2xl p-5 shadow-2xl space-y-4 text-left">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Type className="w-4 h-4 text-[#39FF14]" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Add Custom Text
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowTextModal(false)}
+                className="text-neutral-400 hover:text-white text-xs px-2 py-1 rounded bg-neutral-800 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-neutral-300 block">
+                Type Your Custom Phrase or Word:
+              </label>
+              <input
+                type="text"
+                value={customTextPrompt}
+                onChange={(e) => setCustomTextPrompt(e.target.value)}
+                placeholder="e.g. STREETWEAR 2026, MY BRAND..."
+                className="w-full px-3 py-2.5 bg-black border-2 border-[#39FF14]/70 rounded-xl text-white font-extrabold text-sm focus:border-[#39FF14] focus:outline-none"
+                maxLength={40}
+                autoFocus
+              />
+              <p className="text-[11px] text-neutral-400">
+                You can adjust fonts, ink color, size, rotation, and arc curves anytime on the canvas.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowTextModal(false)}
+                className="px-3 py-2 rounded-xl bg-neutral-800 text-neutral-300 text-xs font-bold hover:bg-neutral-700 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectText(customTextPrompt.trim() || 'YOUR CUSTOM TEXT');
+                  setShowTextModal(false);
+                }}
+                className="px-5 py-2 rounded-xl bg-[#39FF14] text-black text-xs font-black uppercase tracking-wider hover:bg-[#32e012] transition cursor-pointer shadow-[0_0_15px_rgba(57,255,20,0.4)]"
+              >
+                Plant Text on Hoodie →
+              </button>
             </div>
           </div>
         </div>

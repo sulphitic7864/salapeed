@@ -350,13 +350,13 @@ export default function App() {
               setPlacedElements([...placedElements, newElem]);
               setCurrentScreen('customize');
             }}
-            onSelectText={() => {
+            onSelectText={(customText) => {
               const newElem: PlantedElement = {
                 id: `elem-text-${Date.now()}`,
                 side: activeCustomizingSide,
                 zone: activeCustomizingZone,
                 type: 'text',
-                textContent: 'SALAPEED',
+                textContent: customText || 'YOUR CUSTOM TEXT',
                 textFont: 'condensed',
                 textColor: '#39FF14',
                 textCurve: true,

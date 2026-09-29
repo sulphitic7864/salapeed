@@ -19,7 +19,6 @@ import zipGreyBack from '../assets/images/zip_grey_back_1790367668790.jpg';
 export const COLOR_OPTIONS: Record<string, ColorOption> = {
   Navy: { name: 'Navy', hex: '#1d2a44', ink: '#f0f4f8' },
   Black: { name: 'Black', hex: '#121417', ink: '#f0f4f8' },
-  White: { name: 'White', hex: '#ededee', ink: '#121417' },
   'Heather Grey': { name: 'Heather Grey', hex: '#c5c7cb', ink: '#121417' },
   Red: { name: 'Red', hex: '#b31e24', ink: '#f0f4f8' },
   Charcoal: { name: 'Charcoal', hex: '#2e3238', ink: '#f0f4f8' },
@@ -31,8 +30,8 @@ export const SALAPEED_BRAND = {
   phone: '3661 8183',
   fullPhone: '+973 3661 8183',
   whatsappUrl: 'https://wa.me/97336618183',
-  website: 'www.salapeed.bh',
-  websiteUrl: 'https://www.salapeed.bh',
+  website: 'www.salapeed.com',
+  websiteUrl: 'https://www.salapeed.com',
   instagram: '@salapeed',
   instagramUrl: 'https://instagram.com/salapeed',
 };
@@ -148,7 +147,7 @@ export const PRINT_ZONES: PrintZone[] = [
     id: 'front-centre-lower',
     name: 'Centre Chest (Print Zone)',
     side: 'front',
-    boundingBox: { top: 29, left: 29, width: 42, height: 23 },
+    boundingBox: { top: 29, left: 26, width: 28, height: 23 },
   },
   {
     id: 'front-right',
@@ -161,13 +160,13 @@ export const PRINT_ZONES: PrintZone[] = [
     id: 'back-full',
     name: 'Full Back (Primary Safe Zone)',
     side: 'back',
-    boundingBox: { top: 23, left: 27, width: 46, height: 52 },
+    boundingBox: { top: 30, left: 27, width: 46, height: 52 },
   },
   {
     id: 'back-upper',
     name: 'Upper Back (Shoulder Span)',
     side: 'back',
-    boundingBox: { top: 23, left: 28, width: 44, height: 23 },
+    boundingBox: { top: 30, left: 28, width: 44, height: 23 },
   },
   // Sleeve View Print Zones
   {
@@ -198,7 +197,7 @@ export function getHoodiePhoto(
 
   // SLEEVE VIEW
   if (side === 'sleeve') {
-    return getHoodiePhoto(imageType, colorName, 'front', product);
+    return '/images/hoodie-sleeve-view.jpg';
   }
 
   // REAL FULL-ZIP HOODIE (Visible metallic zipper, split kangaroo pockets)
@@ -490,10 +489,10 @@ export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
   deliveryFee: 1.5,
   shopPhone: '+973 3661 8183',
   shopAddress: 'Salapeed Workshop & Print Works, Road 2819, Block 428, Seef District, Manama, Kingdom of Bahrain',
-  shopEmail: 'orders@salapeed.bh',
+  shopEmail: 'orders@salapeed.com',
   benefitIban: 'BH29 BBME 0000 0012 3456 78',
   benefitPhone: '+973 3661 8183',
-  website: 'www.salapeed.bh',
+  website: 'www.salapeed.com',
   instagram: '@salapeed',
   sloganEn: 'Print . Stitch . Deliver',
   brandNameEn: 'Salapeed',

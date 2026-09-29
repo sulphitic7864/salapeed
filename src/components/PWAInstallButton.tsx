@@ -40,10 +40,10 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
               ? 'px-2 py-1 text-xs rounded border border-neutral-700 text-neutral-300 hover:text-white'
               : 'px-3 py-1.5 text-xs rounded-md border border-[#39FF14]/40 text-[#39FF14] hover:bg-[#39FF14]/10'
           }`}
-          title="Install on iPhone / iPad"
+          title="Add Salapeed to your iPhone or iPad Home Screen for quick access"
         >
           <Smartphone className="w-3.5 h-3.5" />
-          <span>Install PWA</span>
+          <span>Add to Home Screen</span>
         </button>
 
         {showIOSGuide && (

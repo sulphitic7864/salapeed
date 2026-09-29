@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Product, GarmentSide } from '../types';
 import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
+import { RealisticHoodieGraphic } from './RealisticHoodieGraphic';
 import { formatBHD } from '../lib/store';
 import {
   ArrowLeft,
@@ -121,11 +122,22 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-2">
-                  <img
-                    src={getHoodiePhoto(product.imageType, selectedColor, previewSide, product)}
-                    alt={`${product.name} - ${previewSide} view`}
-                    className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.6)] animate-fadeIn pointer-events-none select-none"
-                  />
+                  {previewSide === 'sleeve' ? (
+                    <div className="w-full h-full flex items-center justify-center p-2">
+                      <RealisticHoodieGraphic
+                        imageType={product.imageType}
+                        colorName={selectedColor}
+                        side="sleeve"
+                        className="filter drop-shadow-[0_14px_36px_rgba(0,0,0,0.8)]"
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={getHoodiePhoto(product.imageType, selectedColor, previewSide, product)}
+                      alt={`${product.name} - ${previewSide} view`}
+                      className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.6)] animate-fadeIn pointer-events-none select-none"
+                    />
+                  )}
 
                   {/* Side Angle Flipper underneath when in vector mode */}
                   <div className="absolute bottom-2 flex items-center gap-1 bg-black/90 p-1 rounded-lg border border-neutral-800 shadow">

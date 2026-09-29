@@ -312,7 +312,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   <div className="w-4 h-4 bg-neutral-300" />
                   <div className="w-4 h-4 bg-black" />
                 </div>
-                <div className="text-[10px] font-mono text-black font-bold">SALAPEED BH</div>
+                <div className="text-[10px] font-mono text-black font-bold">SALAPEED.COM</div>
               </div>
             </div>
 

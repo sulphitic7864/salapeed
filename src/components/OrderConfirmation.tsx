@@ -90,7 +90,7 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
                 Automated Confirmation Sent
               </div>
               <div className="text-[10px] font-mono text-neutral-400">
-                To: <span className="text-[#39FF14]">{order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '')}@salapeed.bh`}</span>
+                To: <span className="text-[#39FF14]">{order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '')}@salapeed.com`}</span>
               </div>
             </div>
           </div>
