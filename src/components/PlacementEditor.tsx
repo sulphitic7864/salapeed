@@ -67,6 +67,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   const [currentZone, setCurrentZone] = useState<PrintZone>(availableZones[0] || PRINT_ZONES[0]);
   const [showGarmentSelector, setShowGarmentSelector] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetRef = useRef<{ side: GarmentSide; zone: PrintZone } | null>(null);
   const frontPreviewRef = useRef<HTMLDivElement | null>(null);
   const backPreviewRef = useRef<HTMLDivElement | null>(null);
   const sleevePreviewRef = useRef<HTMLDivElement | null>(null);
@@ -213,11 +214,16 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   };
 
   // Direct drop handler when image is dropped onto garment
-  const handleDropUpload = (imageUrl: string, fileName: string, isLowRes: boolean) => {
+  const handleDropUpload = (
+    imageUrl: string,
+    fileName: string,
+    isLowRes: boolean,
+    target = { side: currentSide, zone: currentZone }
+  ) => {
     const newElem: PlantedElement = {
       id: `elem-drop-${Date.now()}`,
-      side: currentSide,
-      zone: currentZone.name,
+      side: target.side,
+      zone: target.zone.name,
       type: 'upload',
       imageUrl,
       graphicName: fileName,
@@ -229,6 +235,8 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
     };
     onUpdateElements([...elements, newElem]);
     setSelectedElementId(newElem.id);
+    setCurrentSide(target.side);
+    setCurrentZone(target.zone);
   };
 
   // Direct drop handler when graphic is dropped onto garment
@@ -240,6 +248,8 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const uploadTarget = uploadTargetRef.current || { side: currentSide, zone: currentZone };
+    uploadTargetRef.current = null;
 
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file (PNG, JPG, SVG).');
@@ -253,7 +263,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
         const img = new Image();
         img.onload = () => {
           const isLowRes = img.naturalWidth < 800 || img.naturalHeight < 800;
-          handleDropUpload(result, file.name, isLowRes);
+          handleDropUpload(result, file.name, isLowRes, uploadTarget);
         };
         img.src = result;
       }
@@ -588,7 +598,10 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                uploadTargetRef.current = { side: currentSide, zone: currentZone };
+                fileInputRef.current?.click();
+              }}
               className="text-[11px] font-mono text-neutral-300 hover:text-white flex items-center gap-1 bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded transition cursor-pointer"
             >
               <Upload className="w-3 h-3 text-[#39FF14]" />
