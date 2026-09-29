@@ -98,7 +98,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
 
   // Curved text renderer
   const renderCurvedText = (text: string, font: string, color: string, curve: boolean) => {
-    const chars = (text || 'YOUR CUSTOM TEXT').split('');
+    const chars = (text || 'Salapeed').split('');
     if (!curve || chars.length <= 1) {
       return (
         <span
@@ -113,7 +113,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
           }}
           className="text-sm sm:text-base font-black tracking-wider uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
         >
-          {text || 'YOUR CUSTOM TEXT'}
+          {text || 'Salapeed'}
         </span>
       );
     }
@@ -699,7 +699,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                   // 3. Custom Streetwear Arched / Condensed Typography
                   <div className="text-center whitespace-nowrap p-2 pointer-events-none">
                     {renderCurvedText(
-                      elem.textContent || 'YOUR CUSTOM TEXT',
+                      elem.textContent || 'Salapeed',
                       elem.textFont || 'condensed',
                       elem.textColor || '#39FF14',
                       !!elem.textCurve

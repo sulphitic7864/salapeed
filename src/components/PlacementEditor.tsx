@@ -160,7 +160,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       side: currentSide,
       zone: currentZone.name,
       type: 'text',
-      textContent: 'YOUR CUSTOM TEXT',
+      textContent: 'Salapeed',
       textFont: 'condensed',
       textColor: '#39FF14',
       textCurve: false,

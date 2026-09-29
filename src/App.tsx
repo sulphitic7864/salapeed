@@ -356,7 +356,7 @@ export default function App() {
                 side: activeCustomizingSide,
                 zone: activeCustomizingZone,
                 type: 'text',
-                textContent: customText || 'YOUR CUSTOM TEXT',
+                textContent: customText || 'Salapeed',
                 textFont: 'condensed',
                 textColor: '#39FF14',
                 textCurve: true,

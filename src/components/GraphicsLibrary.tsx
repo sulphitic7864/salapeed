@@ -373,7 +373,7 @@ export const GraphicsLibrary: React.FC<GraphicsLibraryProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onSelectText(customTextPrompt.trim() || 'YOUR CUSTOM TEXT');
+                  onSelectText(customTextPrompt.trim() || 'Salapeed');
                   setShowTextModal(false);
                 }}
                 className="px-5 py-2 rounded-xl bg-[#39FF14] text-black text-xs font-black uppercase tracking-wider hover:bg-[#32e012] transition cursor-pointer shadow-[0_0_15px_rgba(57,255,20,0.4)]"
