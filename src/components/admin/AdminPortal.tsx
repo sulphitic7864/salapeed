@@ -42,6 +42,7 @@ import {
   Mail,
   Copy,
   FolderPlus,
+  LoaderCircle,
 } from 'lucide-react';
 import { buildPrintShopDispatchBundle, downloadPrintShopElectronicFile, releasePrintShopPackage } from '../../lib/printShopExport';
 import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
@@ -97,6 +98,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [emailInput, setEmailInput] = useState('');
   const [passInput, setPassInput] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   // Admin tabs
@@ -235,8 +237,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-            const ok = await onLogin(emailInput.trim(), passInput);
-            if (!ok) setLoginError(true);
+            if (isLoggingIn) return;
+            setIsLoggingIn(true);
+            setLoginError(false);
+            try {
+              const ok = await onLogin(emailInput.trim(), passInput);
+              if (!ok) {
+                setLoginError(true);
+                setIsLoggingIn(false);
+              }
+            } catch {
+              setLoginError(true);
+              setIsLoggingIn(false);
+            }
           }}
           className="blueprint-card p-5 space-y-3.5 text-left"
         >
@@ -245,6 +258,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <input
               type="email"
               value={emailInput}
+              disabled={isLoggingIn}
               onChange={(e) => {
                 setEmailInput(e.target.value);
                 setLoginError(false);
@@ -262,6 +276,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <input
               type="password"
               value={passInput}
+              disabled={isLoggingIn}
               onChange={(e) => {
                 setPassInput(e.target.value);
                 setLoginError(false);
@@ -275,6 +290,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           <button
             type="button"
+            disabled={isLoggingIn}
             onClick={async () => {
               setResetMessage(null);
               if (!emailInput.trim()) {
@@ -299,9 +315,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-sm uppercase rounded-lg transition cursor-pointer"
+            disabled={isLoggingIn}
+            aria-busy={isLoggingIn}
+            className="w-full py-2.5 bg-[#39FF14] hover:bg-[#32e012] disabled:cursor-wait disabled:opacity-70 text-black font-heading font-black text-sm uppercase rounded-lg transition cursor-pointer flex items-center justify-center gap-2"
           >
-            Access Portal
+            {isLoggingIn && <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            {isLoggingIn ? 'Signing In...' : 'Access Portal'}
           </button>
         </form>
       </div>
@@ -356,7 +375,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             className="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Lock</span>
+            <span>Logout</span>
           </button>
         </div>
       </div>
