@@ -458,6 +458,45 @@ async function saveOrder(request, response, adminOnly) {
 app.post('/api/orders', (request, response) => saveOrder(request, response, false));
 app.post('/api/admin/orders', (request, response) => saveOrder(request, response, true));
 
+app.get('/api/orders/track', async (request, response) => {
+  const lookup = typeof request.query.lookup === 'string' ? request.query.lookup.trim() : '';
+  if (!lookup) return response.status(400).json({ error: 'Enter an order number or registered phone number.' });
+
+  try {
+    let query;
+    const orderId = lookup.toUpperCase();
+    const phoneDigits = lookup.replace(/\D/g, '');
+    const isOrderId = /^SP-[A-Z0-9_-]{4,80}$/.test(orderId);
+    if (isOrderId) {
+      query = new URLSearchParams({ id: `eq.${orderId}`, select: '*', limit: '1' });
+    } else {
+      if (phoneDigits.length < 7) {
+        return response.status(400).json({ error: 'Enter a valid order number or phone number.' });
+      }
+      query = new URLSearchParams({
+        customer_phone: `ilike.*${phoneDigits.slice(-4)}*`,
+        select: '*',
+        order: 'created_at.desc',
+        limit: '100',
+      });
+    }
+
+    const rows = await supabaseRequest(`orders?${query}`);
+    const matchedOrder = isOrderId
+      ? rows?.[0]
+      : rows?.find((row) => {
+        const storedDigits = String(row.customer_phone || '').replace(/\D/g, '');
+        const suffixLength = Math.min(phoneDigits.length, 8);
+        return storedDigits.slice(-suffixLength) === phoneDigits.slice(-suffixLength);
+      });
+    if (!matchedOrder) return response.status(404).json({ error: 'Order not found.' });
+    return response.json(fromOrderRecord(matchedOrder));
+  } catch (error) {
+    console.error('Supabase order tracking lookup failed:', error.message);
+    return response.status(error.statusCode || 502).json({ error: 'Could not look up the order right now.' });
+  }
+});
+
 app.post('/api/admin/graphics', async (request, response) => {
   if (!requireAdminSession(request, response)) return;
   try {

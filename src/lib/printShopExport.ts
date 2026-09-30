@@ -87,7 +87,7 @@ export function buildPrintShopPackage(order: Order): PrintShopPackage {
           `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'back')}`,
         sleeve:
           item.designPreviews?.sleeve ||
-          `${window.location.origin}${getHoodiePhoto(item.imageType, item.color, 'sleeve')}`,
+          getHoodiePhoto(item.imageType, item.color, 'sleeve'),
       },
       printPlacements: (item.placements || []).map((el: PlantedElement) => ({
         side: el.side,

@@ -80,6 +80,10 @@ export async function fetchOrdersFromSupabase(): Promise<Order[] | null> {
   return requestJson<Order[]>('/api/admin/orders');
 }
 
+export async function fetchTrackedOrderFromSupabase(lookup: string): Promise<Order | null> {
+  return requestJson<Order>(`/api/orders/track?lookup=${encodeURIComponent(lookup)}`);
+}
+
 export async function fetchGraphicsFromSupabase(): Promise<GraphicItem[] | null> {
   return requestJson<GraphicItem[]>('/api/graphics');
 }

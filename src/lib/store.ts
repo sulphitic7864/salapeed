@@ -19,6 +19,7 @@ import {
 import {
   syncOrderToSupabase,
   fetchOrdersFromSupabase,
+  fetchTrackedOrderFromSupabase,
   fetchGraphicsFromSupabase,
   fetchProductsFromSupabase,
   fetchFaqsFromSupabase,
@@ -429,19 +430,19 @@ class Store {
   }
 
   // Orders operations
-  public createOrder(orderData: {
+  public async createOrder(orderData: {
     customerName: string;
     customerEmail?: string;
     customerPhone: string;
     customerAddress: string;
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
-  }): Order {
+  }): Promise<Order> {
     const subtotal = this.cart.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
     const deliveryFee = this.config.deliveryFee;
     const total = subtotal + deliveryFee;
 
-    const orderId = `SP-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderId = `SP-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const newOrder: Order = {
       id: orderId,
       createdAt: new Date().toISOString(),
@@ -465,25 +466,19 @@ class Store {
       customerNotes: orderData.notes,
     };
 
+    const saved = await syncOrderToSupabase(newOrder);
+    if (!saved) throw new Error('We could not save your order. Please try again. Your cart is still available.');
+
     this.orders = [newOrder, ...this.orders];
     this.save(STORAGE_KEYS.ORDERS, this.orders);
     this.clearCart();
-
-    // Async sync with Supabase
-    syncOrderToSupabase(newOrder);
 
     this.notify();
     return newOrder;
   }
 
-  public getOrderById(id: string): Order | undefined {
-    const trimmed = id.trim().toUpperCase();
-    return this.orders.find(
-      (o) =>
-        o.id.toUpperCase() === trimmed ||
-        o.id.toUpperCase().includes(trimmed) ||
-        o.customerPhone.replace(/\s+/g, '').includes(trimmed.replace(/\s+/g, ''))
-    );
+  public async getOrderById(id: string): Promise<Order | undefined> {
+    return (await fetchTrackedOrderFromSupabase(id)) || undefined;
   }
 
   public updateOrderStatus(orderId: string, status: OrderStatus, note?: string) {

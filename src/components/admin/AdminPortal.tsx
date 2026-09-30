@@ -1573,7 +1573,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     getHoodiePhoto(it.imageType, it.color, 'back');
                   const sleeveMockup =
                     it.designPreviews?.sleeve ||
-                    `${window.location.origin}${getHoodiePhoto(it.imageType, it.color, 'sleeve')}`;
+                    getHoodiePhoto(it.imageType, it.color, 'sleeve');
 
                   return (
                     <div key={idx} className="border-2 border-neutral-300 p-4 rounded-xl space-y-3 bg-[#fafafa]">

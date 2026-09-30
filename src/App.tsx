@@ -141,7 +141,7 @@ export default function App() {
     setCurrentScreen('cart');
   };
 
-  const handlePlaceOrder = (orderData: {
+  const handlePlaceOrder = async (orderData: {
     customerName: string;
     customerEmail?: string;
     customerPhone: string;
@@ -149,7 +149,7 @@ export default function App() {
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
   }) => {
-    const newOrder = store.createOrder({
+    const newOrder = await store.createOrder({
       customerName: orderData.customerName,
       customerEmail: orderData.customerEmail,
       customerPhone: orderData.customerPhone,

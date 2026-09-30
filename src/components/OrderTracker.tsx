@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Order, AdminConfig } from '../types';
 import { formatBHD } from '../lib/store';
 import { Search, Clock, Printer, Truck, CheckCircle2, ArrowLeft, Phone, MapPin, Download, FileCode } from 'lucide-react';
@@ -7,7 +7,7 @@ import { downloadPrintShopElectronicFile } from '../lib/printShopExport';
 
 interface OrderTrackerProps {
   initialOrderId?: string;
-  onFindOrder: (id: string) => Order | undefined;
+  onFindOrder: (lookup: string) => Promise<Order | undefined>;
   config: AdminConfig;
   onBack: () => void;
 }
@@ -19,17 +19,43 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
   onBack,
 }) => {
   const [searchInput, setSearchInput] = useState(initialOrderId);
-  const [currentOrder, setCurrentOrder] = useState<Order | undefined>(
-    initialOrderId ? onFindOrder(initialOrderId) : undefined
-  );
+  const [currentOrder, setCurrentOrder] = useState<Order | undefined>();
   const [hasSearched, setHasSearched] = useState(Boolean(initialOrderId));
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!initialOrderId.trim()) return;
+    let cancelled = false;
+    setSearchInput(initialOrderId);
+    setHasSearched(true);
+    setIsSearching(true);
+    onFindOrder(initialOrderId)
+      .then((order) => {
+        if (!cancelled) setCurrentOrder(order);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentOrder(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setIsSearching(false);
+      });
+    return () => { cancelled = true; };
+  }, [initialOrderId]);
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchInput.trim()) return;
-    const found = onFindOrder(searchInput.trim());
-    setCurrentOrder(found);
     setHasSearched(true);
+    setIsSearching(true);
+    setCurrentOrder(undefined);
+    try {
+      const found = await onFindOrder(searchInput.trim());
+      setCurrentOrder(found);
+    } catch {
+      setCurrentOrder(undefined);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const stages = [
@@ -81,6 +107,10 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
           Track
         </button>
       </form>
+
+      {isSearching && (
+        <div role="status" className="text-xs text-neutral-400">Searching orders...</div>
+      )}
 
       {/* Order Status Result Card */}
       {currentOrder ? (
@@ -235,40 +265,14 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
             </a>
           </div>
         </div>
-      ) : hasSearched ? (
+      ) : hasSearched && !isSearching ? (
         <div className="blueprint-card p-8 text-center space-y-2">
           <p className="text-sm font-bold text-white">No order found</p>
           <p className="text-xs text-neutral-400">
             We couldn't find an order matching "{searchInput}". Please double check your order number or phone number.
           </p>
         </div>
-      ) : (
-        <div className="p-4 bg-neutral-900/40 rounded-xl border border-neutral-800 text-xs text-neutral-400 space-y-2">
-          <div className="font-bold text-white">Demo Orders for Testing:</div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setSearchInput('SP-8421');
-                setCurrentOrder(onFindOrder('SP-8421'));
-                setHasSearched(true);
-              }}
-              className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-[#39FF14] font-mono cursor-pointer"
-            >
-              SP-8421 (In production)
-            </button>
-            <button
-              onClick={() => {
-                setSearchInput('SP-9140');
-                setCurrentOrder(onFindOrder('SP-9140'));
-                setHasSearched(true);
-              }}
-              className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-[#39FF14] font-mono cursor-pointer"
-            >
-              SP-9140 (Ready for delivery)
-            </button>
-          </div>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };
