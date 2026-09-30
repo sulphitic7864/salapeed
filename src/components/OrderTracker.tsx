@@ -188,7 +188,7 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
                   key={idx}
                   className="p-2.5 rounded-lg bg-neutral-900/80 border border-neutral-800/80 flex items-center gap-3"
                 >
-                  <div className="w-24 h-14 rounded-md bg-[#0b0c10] border border-neutral-800 p-1 grid grid-cols-3 gap-1 shrink-0">
+                  <div className="w-24 h-14 rounded-md bg-[#0b0c10] border border-neutral-800 p-1 grid grid-cols-2 gap-1 shrink-0">
                     <img
                       src={it.designPreviews?.front || (it.designPreviewSide === 'front' ? it.designPreview : undefined) || getHoodiePhoto(it.imageType, it.color, 'front')}
                       alt={`${it.productName} front`}
@@ -197,11 +197,6 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
                     <img
                       src={it.designPreviews?.back || (it.designPreviewSide === 'back' ? it.designPreview : undefined) || getHoodiePhoto(it.imageType, it.color, 'back')}
                       alt={`${it.productName} back`}
-                      className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                    />
-                    <img
-                      src={it.designPreviews?.sleeve || getHoodiePhoto(it.imageType, it.color, 'sleeve')}
-                      alt={`${it.productName} sleeve`}
                       className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                     />
                   </div>

@@ -57,19 +57,34 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
 
         <!-- Visual Renderings Grid -->
         <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-          <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">Front Custom View</div>
-            <img src="${frontPhoto}" alt="Front Mockup" style="max-height: 140px; max-width: 100%; object-fit: contain;" />
-          </div>
-          <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">Back Custom View</div>
-            <img src="${backPhoto}" alt="Back Mockup" style="max-height: 140px; max-width: 100%; object-fit: contain;" />
-          </div>
-          <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">Sleeve Custom View</div>
-            <img src="${sleevePhoto}" alt="Sleeve Mockup" style="max-height: 140px; max-width: 100%; object-fit: contain;" />
-          </div>
-        </div>
+  <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
+    <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">
+      Front Custom View
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+      <img
+        src="${frontPhoto}"
+        alt="Front Mockup"
+        style="display: block; max-height: 140px; max-width: 100%; object-fit: contain; margin: 0 auto;"
+      />
+    </div>
+  </div>
+
+  <div style="flex: 1; background: #0c0e12; border: 1px solid #1f242e; border-radius: 8px; padding: 10px; text-align: center;">
+    <div style="color: #888; font-size: 10px; font-family: monospace; text-transform: uppercase; margin-bottom: 6px;">
+      Back Custom View
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
+      <img
+        src="${backPhoto}"
+        alt="Back Mockup"
+        style="display: block; max-height: 140px; max-width: 100%; object-fit: contain; margin: 0 auto;"
+      />
+    </div>
+  </div>
+</div>
 
         <!-- Placed Elements Breakdown -->
         <div style="background: #0a0b0e; border-radius: 6px; padding: 10px; font-size: 12px; color: #d0d0d0;">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CartItem, AdminConfig } from '../types';
 import { formatBHD } from '../lib/store';
-import { ArrowLeft, CheckCircle2, ShieldCheck, QrCode, Phone, MapPin, User, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ShieldCheck, QrCode, Phone, MapPin, User, AlertCircle, LoaderCircle } from 'lucide-react';
 
 interface CheckoutViewProps {
   cart: CartItem[];
@@ -14,7 +14,7 @@ interface CheckoutViewProps {
     customerAddress: string;
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
-  }) => void;
+  }) => Promise<void>;
   onBack: () => void;
 }
 
@@ -35,12 +35,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   );
   const [showBenefitModal, setShowBenefitModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = cart.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
   const total = subtotal + deliveryFee;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name.trim()) {
       setErrorMsg('Please enter your full name.');
       return;
@@ -59,14 +61,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     }
 
     setErrorMsg(null);
-    onPlaceOrder({
-      customerName: name.trim(),
-      customerEmail: email.trim(),
-      customerPhone: phone.trim(),
-      customerAddress: address.trim(),
-      paymentMethod,
-      notes: notes.trim(),
-    });
+    setIsSubmitting(true);
+    try {
+      await onPlaceOrder({
+        customerName: name.trim(),
+        customerEmail: email.trim(),
+        customerPhone: phone.trim(),
+        customerAddress: address.trim(),
+        paymentMethod,
+        notes: notes.trim(),
+      });
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Could not save your order. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -276,10 +284,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
           <button
             type="submit"
-            className="w-full py-4 px-4 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-base uppercase tracking-wider rounded-lg shadow-lg flex items-center justify-center gap-2 transition cursor-pointer"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="w-full py-4 px-4 bg-[#39FF14] hover:bg-[#32e012] disabled:cursor-wait disabled:opacity-70 text-black font-heading font-black text-base uppercase tracking-wider rounded-lg shadow-lg flex items-center justify-center gap-2 transition cursor-pointer"
           >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>Place Order ({formatBHD(total)})</span>
+            {isSubmitting ? <LoaderCircle className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+            <span>{isSubmitting ? 'Saving Order...' : `Place Order (${formatBHD(total)})`}</span>
           </button>
         </div>
       </form>
