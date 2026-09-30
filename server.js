@@ -581,6 +581,13 @@ if (existsSync(distDirectory)) {
   app.get('*', (_request, response) => response.sendFile(path.join(distDirectory, 'index.html')));
 }
 
-app.listen(port, () => {
-  console.log(`Salapeed server listening on port ${port}`);
-});
+const isDirectExecution = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectExecution) {
+  app.listen(port, () => {
+    console.log(`Salapeed server listening on port ${port}`);
+  });
+}
+
+export default app;
