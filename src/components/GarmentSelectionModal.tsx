@@ -107,6 +107,15 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
               {orderedProducts.map((prod, idx) => {
                 const isSelected = selectedProductId === prod.id;
                 const isKids = prod.kind === 'kids';
+                const previewColor = isSelected && selectedColor
+                  ? selectedColor
+                  : prod.colors[0] || 'Black';
+                const previewPhoto = prod.colorPhotos?.[previewColor] || getHoodiePhoto(
+                  prod.imageType,
+                  previewColor,
+                  'front',
+                  prod
+                );
 
                 return (
                   <button
@@ -127,7 +136,16 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
 
                     <div className="w-full h-24 mb-2 rounded-lg bg-black/40 p-1 flex items-center justify-center overflow-hidden">
                       <img
-                        src={prod.photoUrl}
+                        src={previewPhoto}
+                        onError={(event) => {
+                          event.currentTarget.onerror = null;
+                          event.currentTarget.src = getHoodiePhoto(
+                            prod.imageType,
+                            previewColor,
+                            'front',
+                            prod
+                          );
+                        }}
                         alt={prod.name}
                         className="w-full h-full object-contain filter drop-shadow group-hover:scale-105 transition"
                       />

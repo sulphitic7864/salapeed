@@ -304,7 +304,16 @@ class Store {
         ]);
 
         if (remoteProducts) {
-          this.products = this.mergeById(this.products, remoteProducts);
+          this.products = this.mergeById(this.products, remoteProducts).map((product) => {
+            const bundledProduct = INITIAL_PRODUCTS.find((initial) => initial.id === product.id);
+            return bundledProduct
+              ? {
+                  ...product,
+                  photoUrl: bundledProduct.photoUrl,
+                  colorPhotos: bundledProduct.colorPhotos,
+                }
+              : product;
+          });
           this.save(STORAGE_KEYS.PRODUCTS, this.products);
         }
 
