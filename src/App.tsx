@@ -309,6 +309,8 @@ export default function App() {
             product={activeProduct}
             colorName={selectedColor}
             sizeName={selectedSize}
+            initialSide={activeCustomizingSide}
+            initialZoneName={activeCustomizingZone}
             elements={placedElements}
             allProducts={store.products}
             onSelectProduct={setActiveProduct}

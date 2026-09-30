@@ -30,6 +30,8 @@ interface PlacementEditorProps {
   product: Product;
   colorName: string;
   sizeName: string;
+  initialSide?: GarmentSide;
+  initialZoneName?: string;
   elements: PlantedElement[];
   allProducts?: Product[];
   onSelectProduct?: (product: Product) => void;
@@ -47,6 +49,8 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   product,
   colorName,
   sizeName,
+  initialSide,
+  initialZoneName,
   elements,
   allProducts = [],
   onSelectProduct,
@@ -61,10 +65,14 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
 }) => {
   // Default to front view or the first element's side
   const [currentSide, setCurrentSide] = useState<GarmentSide>(
-    elements[0]?.side === 'back' ? 'back' : 'front'
+    initialSide || (elements[0]?.side === 'back' ? 'back' : 'front')
   );
   const availableZones = PRINT_ZONES.filter((z) => z.side === currentSide);
-  const [currentZone, setCurrentZone] = useState<PrintZone>(availableZones[0] || PRINT_ZONES[0]);
+  const [currentZone, setCurrentZone] = useState<PrintZone>(
+    PRINT_ZONES.find((zone) => zone.side === currentSide && zone.name === initialZoneName) ||
+      availableZones[0] ||
+      PRINT_ZONES[0]
+  );
   const [showGarmentSelector, setShowGarmentSelector] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<{ side: GarmentSide; zone: PrintZone } | null>(null);
