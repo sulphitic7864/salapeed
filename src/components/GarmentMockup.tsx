@@ -202,7 +202,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     const halfHeight = (height / canvas.height) * 50;
 
     return centerX + halfWidth > 57 && centerX - halfWidth < 70 &&
-      centerY + halfHeight > 30 && centerY - halfHeight < 45;
+      centerY + halfHeight > 27 && centerY - halfHeight < 42;
   };
 
   // =========================================================================
@@ -536,7 +536,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       {side === 'front' && (
         <div
           className="absolute z-50 pointer-events-none select-none"
-          style={{ top: '35%', left: '58%', width: '15%' }}
+          style={{ top: '32%', left: '58%', width: '15%' }}
           title="Salapeed Official Brand Crest (Fixed Placement)"
         >
           <img
