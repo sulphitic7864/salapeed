@@ -48,7 +48,7 @@ import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
 
 interface AdminPortalProps {
   isAdmin: boolean;
-  onLogin: (pass: string) => Promise<boolean>;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onLogout: () => void;
   orders: Order[];
   products: Product[];
@@ -92,6 +92,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onExitAdmin,
 }) => {
   // Login form state
+  const [emailInput, setEmailInput] = useState('');
   const [passInput, setPassInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
@@ -231,13 +232,30 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-            const ok = await onLogin(passInput.trim());
+            const ok = await onLogin(emailInput.trim(), passInput);
             if (!ok) setLoginError(true);
           }}
           className="blueprint-card p-5 space-y-3.5 text-left"
         >
           <div>
-            <label className="text-xs text-neutral-400 block mb-1">Admin Password</label>
+            <label className="text-xs text-neutral-400 block mb-1">Admin Email</label>
+            <input
+              type="email"
+              value={emailInput}
+              onChange={(e) => {
+                setEmailInput(e.target.value);
+                setLoginError(false);
+              }}
+              placeholder="admin@example.com"
+              autoComplete="username"
+              className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-[#39FF14]"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-neutral-400 block mb-1">Password</label>
             <input
               type="password"
               value={passInput}
@@ -246,14 +264,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 setLoginError(false);
               }}
               placeholder="Enter password..."
+              autoComplete="current-password"
               className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-[#39FF14]"
-              autoFocus
+              required
             />
           </div>
 
           {loginError && (
             <div className="text-xs text-red-400">
-              Incorrect password. Please try again.
+              Sign-in failed. Check your credentials and admin access.
             </div>
           )}
 

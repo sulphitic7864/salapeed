@@ -79,14 +79,22 @@ create table if not exists public.admin_config (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.admin_users (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  role text not null default 'admin' check (role in ('admin', 'super_admin')),
+  created_at timestamptz not null default now()
+);
+
 alter table public.orders enable row level security;
 alter table public.graphics enable row level security;
 alter table public.graphic_categories enable row level security;
 alter table public.products enable row level security;
 alter table public.faqs enable row level security;
 alter table public.admin_config enable row level security;
+alter table public.admin_users enable row level security;
 
-revoke all on table public.orders, public.graphics, public.graphic_categories, public.products, public.faqs, public.admin_config from anon, authenticated;
+revoke all on table public.orders, public.graphics, public.graphic_categories, public.products, public.faqs, public.admin_config, public.admin_users from anon, authenticated;
 
 grant select on table public.products, public.faqs, public.admin_config, public.graphic_categories to anon, authenticated;
-grant all on table public.orders, public.graphics, public.graphic_categories, public.products, public.faqs, public.admin_config to service_role;
+grant all on table public.orders, public.graphics, public.graphic_categories, public.products, public.faqs, public.admin_config, public.admin_users to service_role;

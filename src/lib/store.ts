@@ -604,13 +604,13 @@ class Store {
   }
 
   // Admin Auth
-  public async adminLogin(pass: string): Promise<boolean> {
+  public async adminLogin(email: string, password: string): Promise<boolean> {
     try {
       const response = await fetch('/api/admin/session', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pass }),
+        body: JSON.stringify({ email, password }),
       });
       if (!response.ok) return false;
 

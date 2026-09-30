@@ -18,14 +18,18 @@ app.use(express.json({ limit: '36mb' }));
 const ADMIN_SESSION_COOKIE = 'salapeed_admin_session';
 const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 
-function getAdminSessionToken(adminPassword) {
+function getAdminSessionSecret() {
+  return process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PRINT_SHOP_RELEASE_TOKEN || '';
+}
+
+function getAdminSessionToken(sessionSecret) {
   const expiresAt = Date.now() + ADMIN_SESSION_MAX_AGE_SECONDS * 1000;
   const payload = Buffer.from(`${expiresAt}.${randomBytes(24).toString('hex')}`).toString('base64url');
-  const signature = createHmac('sha256', adminPassword).update(payload).digest('base64url');
+  const signature = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
-function hasValidAdminSession(request, adminPassword) {
+function hasValidAdminSession(request, sessionSecret) {
   const cookie = request.headers.cookie
     ?.split(';')
     .map((part) => part.trim())
@@ -34,7 +38,7 @@ function hasValidAdminSession(request, adminPassword) {
   const [payload, suppliedSignature] = token?.split('.') || [];
   if (!payload || !suppliedSignature) return false;
 
-  const expectedSignature = createHmac('sha256', adminPassword).update(payload).digest('base64url');
+  const expectedSignature = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
   const supplied = Buffer.from(suppliedSignature);
   const expected = Buffer.from(expectedSignature);
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return false;
@@ -55,27 +59,51 @@ function setAdminSessionCookie(response, token, maxAge) {
   );
 }
 
-app.post('/api/admin/session', (request, response) => {
-  const adminPassword = process.env.PRINT_SHOP_RELEASE_TOKEN;
-  if (!adminPassword) {
-    return response.status(503).json({ error: 'Admin authentication is not configured on the server.' });
+app.post('/api/admin/session', async (request, response) => {
+  const email = typeof request.body?.email === 'string' ? request.body.email.trim() : '';
+  const password = typeof request.body?.password === 'string' ? request.body.password : '';
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  const sessionSecret = getAdminSessionSecret();
+
+  if (!email || !password) return response.status(400).json({ error: 'Email and password are required.' });
+  if (!anonKey || !sessionSecret) {
+    return response.status(503).json({ error: 'Supabase admin authentication is not configured on the server.' });
   }
 
-  const suppliedPassword = typeof request.body?.password === 'string' ? Buffer.from(request.body.password) : Buffer.alloc(0);
-  const configuredPassword = Buffer.from(adminPassword);
-  if (suppliedPassword.length !== configuredPassword.length || !timingSafeEqual(suppliedPassword, configuredPassword)) {
-    return response.status(401).json({ error: 'Incorrect admin password.' });
-  }
+  try {
+    const { url } = getSupabaseSettings();
+    const authResponse = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!authResponse.ok) {
+      return response.status(401).json({ error: 'Invalid email or password, or account is not confirmed.' });
+    }
 
-  const token = getAdminSessionToken(adminPassword);
-  setAdminSessionCookie(response, token, ADMIN_SESSION_MAX_AGE_SECONDS);
-  return response.json({ authenticated: true });
+    const authResult = await authResponse.json();
+    const userId = authResult.user?.id;
+    if (!userId) return response.status(401).json({ error: 'Could not verify the Supabase user.' });
+
+    const query = new URLSearchParams({ user_id: `eq.${userId}`, select: 'user_id', limit: '1' });
+    const admins = await supabaseRequest(`admin_users?${query}`);
+    if (!admins?.length) {
+      return response.status(403).json({ error: 'This account is not authorized as an admin.' });
+    }
+
+    const token = getAdminSessionToken(sessionSecret);
+    setAdminSessionCookie(response, token, ADMIN_SESSION_MAX_AGE_SECONDS);
+    return response.json({ authenticated: true });
+  } catch (error) {
+    console.error('Supabase admin sign-in failed:', error.message);
+    return response.status(error.statusCode || 502).json({ error: 'Could not verify admin access with Supabase.' });
+  }
 });
 
 app.get('/api/admin/session', (request, response) => {
-  const adminPassword = process.env.PRINT_SHOP_RELEASE_TOKEN;
-  if (!adminPassword) return response.status(503).json({ authenticated: false });
-  const authenticated = hasValidAdminSession(request, adminPassword);
+  const sessionSecret = getAdminSessionSecret();
+  if (!sessionSecret) return response.status(503).json({ authenticated: false });
+  const authenticated = hasValidAdminSession(request, sessionSecret);
   return response.status(authenticated ? 200 : 401).json({ authenticated });
 });
 
@@ -89,8 +117,8 @@ function clearAdminSession(response) {
 }
 
 function requireAdminSession(request, response) {
-  const adminPassword = process.env.PRINT_SHOP_RELEASE_TOKEN;
-  if (!adminPassword || !hasValidAdminSession(request, adminPassword)) {
+  const sessionSecret = getAdminSessionSecret();
+  if (!sessionSecret || !hasValidAdminSession(request, sessionSecret)) {
     clearAdminSession(response);
     response.status(401).json({ error: 'Admin session expired. Sign in again.' });
     return false;
@@ -99,7 +127,7 @@ function requireAdminSession(request, response) {
 }
 
 function getSupabaseSettings() {
-  const url = (process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+  const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     const error = new Error('Server-side Supabase credentials are not configured.');
@@ -467,13 +495,13 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
   const username = process.env.SMTP_USER;
   const password = process.env.SMTP_PASS;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const adminPassword = process.env.PRINT_SHOP_RELEASE_TOKEN;
+  const sessionSecret = getAdminSessionSecret();
   const from = process.env.PRINT_SHOP_FROM_EMAIL;
 
-  if (!host || !Number.isInteger(port) || port < 1 || port > 65535 || !adminPassword || !from || (!!username !== !!password)) {
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65535 || !sessionSecret || !from || (!!username !== !!password)) {
     return response.status(503).json({ error: 'SMTP email or server-side admin authentication is not configured correctly.' });
   }
-  if (!hasValidAdminSession(request, adminPassword)) {
+  if (!hasValidAdminSession(request, sessionSecret)) {
     clearAdminSession(response);
     return response.status(401).json({ error: 'Admin session expired. Sign in again before releasing this order.' });
   }
