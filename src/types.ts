@@ -52,6 +52,7 @@ export interface PlantedElement {
   graphicName?: string;
   svgContent?: string;
   imageUrl?: string;
+  printReadyUrl?: string;
   isLowRes?: boolean;
   // Text specific
   textContent?: string;

@@ -159,6 +159,18 @@ export const PRINT_ZONES: PrintZone[] = [
     side: 'front',
     boundingBox: { top: 30, left: 30, width: 17, height: 18 },
   },
+  {
+    id: 'front-left-sleeve',
+    name: 'Left Sleeve (Front)',
+    side: 'front',
+    boundingBox: { top: 24, left: 72, width: 15, height: 44 },
+  },
+  {
+    id: 'front-right-sleeve',
+    name: 'Right Sleeve (Front)',
+    side: 'front',
+    boundingBox: { top: 24, left: 13, width: 15, height: 44 },
+  },
   // Back View Print Zones (broad smooth panel excluding collar and hem)
   {
     id: 'back-full',
@@ -172,12 +184,17 @@ export const PRINT_ZONES: PrintZone[] = [
     side: 'back',
     boundingBox: { top: 30, left: 28, width: 44, height: 23 },
   },
-  // Sleeve View Print Zones
   {
-    id: 'sleeve-left',
-    name: 'Sleeve Length (Excl. Cuff)',
-    side: 'sleeve',
-    boundingBox: { top: 24, left: 32, width: 36, height: 50 },
+    id: 'back-left-sleeve',
+    name: 'Left Sleeve (Back)',
+    side: 'back',
+    boundingBox: { top: 24, left: 72, width: 15, height: 44 },
+  },
+  {
+    id: 'back-right-sleeve',
+    name: 'Right Sleeve (Back)',
+    side: 'back',
+    boundingBox: { top: 24, left: 13, width: 15, height: 44 },
   },
 ];
 

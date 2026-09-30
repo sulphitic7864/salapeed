@@ -61,7 +61,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
 }) => {
   // Default to front view or the first element's side
   const [currentSide, setCurrentSide] = useState<GarmentSide>(
-    elements[0]?.side || 'front'
+    elements[0]?.side === 'back' ? 'back' : 'front'
   );
   const availableZones = PRINT_ZONES.filter((z) => z.side === currentSide);
   const [currentZone, setCurrentZone] = useState<PrintZone>(availableZones[0] || PRINT_ZONES[0]);
@@ -70,7 +70,6 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   const uploadTargetRef = useRef<{ side: GarmentSide; zone: PrintZone } | null>(null);
   const frontPreviewRef = useRef<HTMLDivElement | null>(null);
   const backPreviewRef = useRef<HTMLDivElement | null>(null);
-  const sleevePreviewRef = useRef<HTMLDivElement | null>(null);
   const [isCapturingDesign, setIsCapturingDesign] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
 
@@ -79,7 +78,8 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
     const images = Array.from(mockup.querySelectorAll('img'));
     await Promise.all(images.map((image) => image.decode().catch(() => undefined)));
     return toJpeg(mockup, {
-      quality: 0.85,
+      quality: 1,
+      pixelRatio: 4,
       cacheBust: true,
       skipFonts: true,
       filter: (node) => !(node instanceof HTMLElement && node.dataset.captureIgnore === 'true'),
@@ -93,7 +93,6 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       const designPreviews = {
         front: await captureMockup(frontPreviewRef.current),
         back: await captureMockup(backPreviewRef.current),
-        sleeve: await captureMockup(sleevePreviewRef.current),
       };
       onApproveDesign(designPreviews);
     } catch {
@@ -120,13 +119,6 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
 
   const handleZoneChange = (zone: PrintZone) => {
     setCurrentZone(zone);
-    if (selectedElement) {
-      onUpdateElements(
-        elements.map((el) =>
-          el.id === selectedElement.id ? { ...el, zone: zone.name, side: zone.side } : el
-        )
-      );
-    }
   };
 
   const handleUpdatePosition = (id: string, x: number, y: number) => {
@@ -183,6 +175,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
       graphicName: graphic.name,
       svgContent: graphic.svgContent,
       imageUrl: graphic.previewUrl,
+      printReadyUrl: graphic.printReadyUrl,
       x,
       y,
       scale: 1.0,
@@ -289,7 +282,6 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
   );
   const frontPreviewZone = PRINT_ZONES.find((zone) => zone.side === 'front') || PRINT_ZONES[0];
   const backPreviewZone = PRINT_ZONES.find((zone) => zone.side === 'back') || PRINT_ZONES[0];
-  const sleevePreviewZone = PRINT_ZONES.find((zone) => zone.side === 'sleeve') || PRINT_ZONES[0];
 
   return (
     <div className="space-y-5 pb-16">
@@ -499,11 +491,14 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           onSelectElement={(id) => {
             setSelectedElementId(id);
             const found = elements.find((e) => e.id === id);
-            if (found && found.side !== currentSide) {
-              setCurrentSide(found.side);
+            if (found) {
+              const foundSide = found.side === 'sleeve' ? 'front' : found.side;
+              if (foundSide !== currentSide) setCurrentSide(foundSide);
               const z =
-                PRINT_ZONES.find((pz) => pz.name === found.zone && pz.side === found.side) ||
-                PRINT_ZONES[0];
+                PRINT_ZONES.find((pz) => pz.name === found.zone && pz.side === foundSide) ||
+                (found.side === 'sleeve'
+                  ? PRINT_ZONES.find((pz) => pz.id === 'front-left-sleeve')
+                  : undefined) || PRINT_ZONES[0];
               setCurrentZone(z);
             }
           }}
@@ -570,19 +565,6 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           onSelectElement={() => {}}
           onUpdateElementPosition={() => {}}
           onRootElement={(element) => { backPreviewRef.current = element; }}
-        />
-        <GarmentMockup
-          imageType={product.imageType}
-          colorName={colorName}
-          side="sleeve"
-          activeZone={sleevePreviewZone}
-          elements={elements}
-          selectedElementId={null}
-          product={product}
-          readOnly
-          onSelectElement={() => {}}
-          onUpdateElementPosition={() => {}}
-          onRootElement={(element) => { sleevePreviewRef.current = element; }}
         />
       </div>
 
@@ -654,9 +636,9 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 bg-[#121418] p-1.5 rounded-xl border border-neutral-800">
-          {(['front', 'back', 'sleeve'] as GarmentSide[]).map((sd) => {
-            const sideCount = elements.filter((el) => el.side === sd).length;
+          <div className="grid grid-cols-2 gap-2 bg-[#121418] p-1.5 rounded-xl border border-neutral-800">
+            {(['front', 'back'] as GarmentSide[]).map((sd) => {
+              const sideCount = elements.filter((el) => el.side === sd || (sd === 'front' && el.side === 'sleeve')).length;
             const isSelected = currentSide === sd;
 
             return (
@@ -693,7 +675,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
           <label className="text-xs font-semibold text-neutral-300 uppercase tracking-wider">
             {currentSide.toUpperCase()} Print Zone
           </label>
-          <span className="text-[11px] text-neutral-500 font-mono">Dashed Print-Safe Area</span>
+          <span className="text-[11px] text-neutral-500 font-mono">Choose a print area on the {currentSide}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {availableZones.map((z) => (
@@ -760,11 +742,14 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                 key={el.id}
                 onClick={() => {
                   setSelectedElementId(el.id);
-                  if (el.side !== currentSide) {
-                    setCurrentSide(el.side);
+                  const elementSide = el.side === 'sleeve' ? 'front' : el.side;
+                  if (elementSide !== currentSide) {
+                    setCurrentSide(elementSide);
                     const z =
-                      PRINT_ZONES.find((pz) => pz.name === el.zone && pz.side === el.side) ||
-                      PRINT_ZONES[0];
+                      PRINT_ZONES.find((pz) => pz.name === el.zone && pz.side === elementSide) ||
+                      (el.side === 'sleeve'
+                        ? PRINT_ZONES.find((pz) => pz.id === 'front-left-sleeve')
+                        : undefined) || PRINT_ZONES[0];
                     setCurrentZone(z);
                   }
                 }}

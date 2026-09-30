@@ -43,12 +43,12 @@ import {
   Copy,
   FolderPlus,
 } from 'lucide-react';
-import { downloadPrintShopElectronicFile } from '../../lib/printShopExport';
+import { buildPrintShopDispatchBundle, downloadPrintShopElectronicFile, releasePrintShopPackage } from '../../lib/printShopExport';
 import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
 
 interface AdminPortalProps {
   isAdmin: boolean;
-  onLogin: (pass: string) => boolean;
+  onLogin: (pass: string) => Promise<boolean>;
   onLogout: () => void;
   orders: Order[];
   products: Product[];
@@ -104,7 +104,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [specModalOrder, setSpecModalOrder] = useState<Order | null>(null);
   const [emailModalOrder, setEmailModalOrder] = useState<Order | null>(null);
   const [emailRecipient, setEmailRecipient] = useState<string>('');
-  const [emailDispatchStatus, setEmailDispatchStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [paymentConfirmedForRelease, setPaymentConfirmedForRelease] = useState(false);
+  const [emailDispatchStatus, setEmailDispatchStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [emailDispatchError, setEmailDispatchError] = useState<string | null>(null);
   const [copiedEmailFeedback, setCopiedEmailFeedback] = useState<boolean>(false);
   const [activeEmailTab, setActiveEmailTab] = useState<'preview' | 'text'>('preview');
 
@@ -227,9 +229,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
 
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            const ok = onLogin(passInput.trim());
+            const ok = await onLogin(passInput.trim());
             if (!ok) setLoginError(true);
           }}
           className="blueprint-card p-5 space-y-3.5 text-left"
@@ -607,8 +609,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       onClick={() => {
                         setEmailModalOrder(o);
                         setEmailRecipient(config.shopEmail || 'workshop@salapeed.com');
+                        setPaymentConfirmedForRelease(false);
+                        setEmailDispatchError(null);
                         setEmailDispatchStatus(
-                          o.statusHistory?.some((h) => h.note?.includes('emailed to') || h.note?.includes('dispatched to'))
+                          o.statusHistory?.some((h) => h.note?.includes('PRINT_SHOP_EMAIL_SENT'))
                             ? 'sent'
                             : 'idle'
                         );
@@ -1684,7 +1688,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => setEmailModalOrder(null)}
+                onClick={() => {
+                  setEmailModalOrder(null);
+                }}
                 className="p-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1694,35 +1700,29 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {/* Email Meta & Multi-Channel Dispatch Center */}
             {(() => {
               const targetEmail = emailRecipient || config.shopEmail || 'workshop@salapeed.com';
-              const emailPkg = generatePrintShopPackageEmail(emailModalOrder, targetEmail);
-              const mailtoContent = emailPkg.mailtoBody || emailPkg.bodyText.slice(0, 750);
-              const mailtoUrl = `mailto:${targetEmail}?subject=${encodeURIComponent(
-                emailPkg.subject
-              )}&body=${encodeURIComponent(mailtoContent)}`;
+              const emailPkg = generatePrintShopPackageEmail(emailModalOrder, targetEmail, paymentConfirmedForRelease);
 
-              const handleSendToClient = () => {
-                // 1. Mark order as dispatched in state & history
-                setEmailDispatchStatus('sent');
-                onUpdateOrderStatus(
-                  emailModalOrder.id,
-                  emailModalOrder.status,
-                  `Print shop production package emailed to ${targetEmail} at ${new Date().toLocaleTimeString()}`
-                );
-
-                // 2. Automatically copy full production spec text to clipboard
+              const handleSendToClient = async () => {
+                if (!paymentConfirmedForRelease) return;
+                setEmailDispatchStatus('sending');
+                setEmailDispatchError(null);
                 try {
-                  navigator.clipboard.writeText(emailPkg.bodyText);
-                  setCopiedEmailFeedback(true);
-                  setTimeout(() => setCopiedEmailFeedback(false), 4000);
-                } catch {
-                  // ignore
-                }
-
-                // 3. Trigger default mail app
-                try {
-                  window.location.href = mailtoUrl;
-                } catch {
-                  // anchor handles default
+                  const bundle = buildPrintShopDispatchBundle(emailModalOrder);
+                  const result = await releasePrintShopPackage(
+                    emailModalOrder.id,
+                    targetEmail,
+                    emailPkg,
+                    bundle
+                  );
+                  setEmailDispatchStatus('sent');
+                  onUpdateOrderStatus(
+                    emailModalOrder.id,
+                    emailModalOrder.status,
+                    `PRINT_SHOP_EMAIL_SENT: payment manually verified by admin; SMTP accepted message ${result.id} for ${targetEmail}.`
+                  );
+                } catch (error) {
+                  setEmailDispatchStatus('error');
+                  setEmailDispatchError(error instanceof Error ? error.message : 'The print-shop email could not be sent.');
                 }
               };
 
@@ -1740,7 +1740,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-[#39FF14] shrink-0" />
                         <span>
-                          <strong>Dispatched!</strong> Production package emailed to <u>{targetEmail}</u> and logged in Order #{emailModalOrder.id} timeline.
+                          <strong>Email accepted.</strong> Print files were sent to <u>{targetEmail}</u> and logged in Order #{emailModalOrder.id} timeline.
                         </span>
                       </div>
                       <span className="text-[10px] text-[#39FF14] font-mono font-bold">Email Dispatched</span>
@@ -1762,12 +1762,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           className="w-full px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-mono text-xs focus:border-[#39FF14] focus:outline-none"
                         />
                       </div>
-                      <div>
-                        <div className="text-[11px] font-mono text-neutral-400 mb-1 font-bold">From Sender:</div>
-                        <div className="px-3 py-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800 text-neutral-300 font-mono text-xs truncate">
-                          {emailPkg.from}
-                        </div>
-                      </div>
                     </div>
 
                     <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
@@ -1775,7 +1769,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <strong className="text-neutral-400">Subject:</strong> {emailPkg.subject}
                       </div>
                       <div className="text-[#39FF14] font-bold">
-                        {emailPkg.attachmentsCount} Artwork Vectors + Coordinates Attached
+                        Front/back previews, original artwork, and placement coordinates included
                       </div>
                     </div>
                   </div>
@@ -1841,25 +1835,40 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     />
                   )}
 
-                  {/* Send Options Action Bar - ONLY the asked button */}
+                  {/* Release is gated by a deliberate bank confirmation and server credential. */}
                   <div className="pt-3 border-t border-neutral-800 space-y-2.5">
+                    <label className="flex items-start gap-2 text-xs text-amber-200">
+                      <input
+                        type="checkbox"
+                        checked={paymentConfirmedForRelease}
+                        onChange={(event) => setPaymentConfirmedForRelease(event.target.checked)}
+                        disabled={emailDispatchStatus === 'sending' || emailDispatchStatus === 'sent'}
+                        className="mt-0.5 accent-[#39FF14]"
+                      />
+                      <span>I personally confirmed this payment with my bank. Release this order to production.</span>
+                    </label>
+
+                    {emailDispatchError && <p role="alert" className="text-xs text-red-400">{emailDispatchError}</p>}
+
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      {/* Send to Print Shop Email Client (Only Asked Button) */}
-                      <a
-                        href={mailtoUrl}
+                      <button
+                        type="button"
                         onClick={handleSendToClient}
-                        className="px-4 py-2.5 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-xs uppercase tracking-wider rounded-lg transition cursor-pointer flex items-center gap-2 shadow-[0_0_15px_rgba(57,255,20,0.3)] hover:scale-[1.01]"
+                        disabled={!paymentConfirmedForRelease || emailDispatchStatus === 'sending' || emailDispatchStatus === 'sent'}
+                        className="px-4 py-2.5 bg-[#39FF14] hover:bg-[#32e012] disabled:opacity-40 disabled:cursor-not-allowed text-black font-heading font-black text-xs uppercase tracking-wider rounded-lg transition cursor-pointer flex items-center gap-2 shadow-[0_0_15px_rgba(57,255,20,0.3)]"
                         title={`Send production package to ${targetEmail}`}
                       >
                         <Send className="w-3.5 h-3.5" />
-                        <span>Send to Print Shop Email Client</span>
-                      </a>
+                        <span>{emailDispatchStatus === 'sending' ? 'Sending Package...' : emailDispatchStatus === 'sent' ? 'Package Sent' : 'Confirm Payment & Send to Print Shop'}</span>
+                      </button>
 
                       <div className="flex items-center gap-3 text-xs font-mono text-neutral-400">
                         <span>Recipient: <strong className="text-white">{targetEmail}</strong></span>
                         <button
                           type="button"
-                          onClick={() => setEmailModalOrder(null)}
+                          onClick={() => {
+                            setEmailModalOrder(null);
+                          }}
                           className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 hover:text-white transition cursor-pointer text-xs"
                         >
                           Close Preview

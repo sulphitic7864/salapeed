@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { GarmentSide, PlantedElement, PrintZone, Product, GraphicItem } from '../types';
-import { getHoodiePhoto } from '../data/mockData';
+import { getHoodiePhoto, PRINT_ZONES } from '../data/mockData';
 import {
   RotateCcw,
   Maximize2,
@@ -149,10 +149,27 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     );
   };
 
+  const getElementZone = (elem: PlantedElement) =>
+    PRINT_ZONES.find((zone) => zone.name === elem.zone && zone.side === elem.side) ||
+    (elem.side === 'sleeve' ? PRINT_ZONES.find((zone) => zone.id === 'front-left-sleeve') : undefined) ||
+    activeZone;
+
+  const getElementZoneRect = (elem: PlantedElement) => {
+    const canvasRect = containerRef.current?.getBoundingClientRect();
+    if (!canvasRect) return null;
+    const bounds = getElementZone(elem).boundingBox;
+    return {
+      left: canvasRect.left + (bounds.left / 100) * canvasRect.width,
+      top: canvasRect.top + (bounds.top / 100) * canvasRect.height,
+      width: (bounds.width / 100) * canvasRect.width,
+      height: (bounds.height / 100) * canvasRect.height,
+    };
+  };
+
   // Helper to compute element center in client coordinates
   const getElementClientCenter = (elem: PlantedElement) => {
-    if (!printZoneRef.current) return { x: 0, y: 0 };
-    const rect = printZoneRef.current.getBoundingClientRect();
+    const rect = getElementZoneRect(elem);
+    if (!rect) return { x: 0, y: 0 };
     const cx = rect.left + (elem.x / 100) * rect.width;
     const cy = rect.top + (elem.y / 100) * rect.height;
     return { x: cx, y: cy };
@@ -165,9 +182,10 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     scale = elem.scale,
     rotation = elem.rotation
   ) => {
-    if (side !== 'front' || !containerRef.current || !printZoneRef.current) return false;
+    if (side !== 'front' || !containerRef.current) return false;
     const canvas = containerRef.current.getBoundingClientRect();
-    const zone = printZoneRef.current.getBoundingClientRect();
+    const zone = getElementZoneRect(elem);
+    if (!zone) return false;
     if (!canvas.width || !canvas.height) return false;
 
     const centerX = ((zone.left - canvas.left + (x / 100) * zone.width) / canvas.width) * 100;
@@ -196,8 +214,8 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
     e.preventDefault();
     onSelectElement(elem.id);
 
-    if (!printZoneRef.current) return;
-    const zoneRect = printZoneRef.current.getBoundingClientRect();
+    const zoneRect = getElementZoneRect(elem);
+    if (!zoneRect) return;
     if (zoneRect.width === 0 || zoneRect.height === 0) return;
 
     setDragMode('move');
@@ -235,12 +253,6 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
       if (overlapsBrandLogo(elem, targetX, targetY)) {
         triggerBoundaryWarning('Keep artwork clear of the fixed Salapeed logo.');
         return;
-      }
-
-      // Protection for fixed Salapeed logo on front view (located at left: 57%, top: 30%)
-      if (side === 'front' && targetX > 54 && targetY >= 20 && targetY <= 50) {
-        targetX = 54;
-        triggerBoundaryWarning('⚠️ Salapeed logo area protected! Artwork kept clear of official brand crest.');
       }
 
       // Boundaries clamping (5% to 95%)
@@ -427,7 +439,9 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
   };
 
   // ALL elements for the CURRENT side are visible simultaneously!
-  const visibleElements = elements.filter((el) => el.side === side);
+  const visibleElements = elements.filter(
+    (el) => el.side === side || (el.side === 'sleeve' && side === 'front')
+  );
 
   // Invert canvas background based on garment color:
   // Light background behind dark hoodie (Black, Navy, Charcoal, Red)
@@ -580,6 +594,10 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
         {/* ===================================================================== */}
         {visibleElements.map((elem) => {
           const isSelected = elem.id === selectedElementId;
+          const zoneBounds = getElementZone(elem).boundingBox;
+          const activeBounds = activeZone.boundingBox;
+          const left = ((zoneBounds.left - activeBounds.left + (elem.x / 100) * zoneBounds.width) / activeBounds.width) * 100;
+          const top = ((zoneBounds.top - activeBounds.top + (elem.y / 100) * zoneBounds.height) / activeBounds.height) * 100;
 
           return (
             <div
@@ -588,8 +606,8 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                 isSelected ? 'z-40' : 'z-20'
               }`}
               style={{
-                left: `${elem.x}%`,
-                top: `${elem.y}%`,
+                left: `${left}%`,
+                top: `${top}%`,
                 transform: `translate(-50%, -50%) scale(${elem.scale}) rotate(${elem.rotation}deg)`,
                 cursor: dragMode === 'move' ? 'grabbing' : 'grab',
               }}

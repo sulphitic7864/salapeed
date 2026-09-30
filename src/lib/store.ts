@@ -265,7 +265,20 @@ class Store {
       const cfg = localStorage.getItem(STORAGE_KEYS.ADMIN_CONFIG);
       this.config = cfg ? { ...DEFAULT_ADMIN_CONFIG, ...JSON.parse(cfg) } : DEFAULT_ADMIN_CONFIG;
 
-      this.isAdminLoggedIn = localStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === 'true';
+      const savedAdminAuth = localStorage.getItem(STORAGE_KEYS.ADMIN_AUTH) === 'true';
+      this.isAdminLoggedIn = false;
+      if (savedAdminAuth) {
+        fetch('/api/admin/session', { credentials: 'same-origin' })
+          .then((response) => {
+            this.isAdminLoggedIn = response.ok;
+            if (!response.ok) localStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
+            this.notify();
+          })
+          .catch(() => {
+            localStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
+            this.notify();
+          });
+      }
 
       // If Supabase is configured, fetch latest orders asynchronously
       if (isSupabaseConfigured) {
@@ -540,17 +553,27 @@ class Store {
   }
 
   // Admin Auth
-  public adminLogin(pass: string): boolean {
-    if (pass === 'salapeed2026' || pass === 'admin' || pass === 'admin123') {
+  public async adminLogin(pass: string): Promise<boolean> {
+    try {
+      const response = await fetch('/api/admin/session', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass }),
+      });
+      if (!response.ok) return false;
+
       this.isAdminLoggedIn = true;
       localStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, 'true');
       this.notify();
       return true;
+    } catch {
+      return false;
     }
-    return false;
   }
 
   public adminLogout() {
+    fetch('/api/admin/session', { method: 'DELETE', credentials: 'same-origin' }).catch(() => undefined);
     this.isAdminLoggedIn = false;
     localStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
     this.notify();

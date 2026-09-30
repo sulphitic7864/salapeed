@@ -1,5 +1,16 @@
 import { Order, CartItem, PlantedElement } from '../types';
-import { getHoodiePhoto, SALAPEED_BRAND } from '../data/mockData';
+import { getHoodiePhoto, PRINT_ZONES, SALAPEED_BRAND } from '../data/mockData';
+
+export interface PrintShopAttachment {
+  filename: string;
+  contentType: string;
+  content: string;
+}
+
+export interface PrintShopDispatchBundle {
+  spec: Record<string, unknown>;
+  attachments: PrintShopAttachment[];
+}
 
 export interface PrintShopPackage {
   orderId: string;
@@ -38,6 +49,7 @@ export interface PrintShopPackage {
       inkColor?: string;
       svgArtwork?: string;
       imageUrl?: string;
+      printReadyUrl?: string;
     }[];
   }[];
 }
@@ -88,9 +100,177 @@ export function buildPrintShopPackage(order: Order): PrintShopPackage {
         inkColor: el.textColor || '#39FF14',
         svgArtwork: el.svgContent,
         imageUrl: el.imageUrl,
+        printReadyUrl: el.printReadyUrl,
       })),
     })),
   };
+}
+
+function dataUrlToAttachment(dataUrl: string, filename: string): PrintShopAttachment {
+  const match = dataUrl.match(/^data:([^;,]+)(;base64)?,([\s\S]*)$/i);
+  if (!match) throw new Error(`Could not prepare print asset: ${filename}`);
+
+  const content = match[2]
+    ? match[3]
+    : encodeUtf8(decodeURIComponent(match[3]));
+
+  return { filename, contentType: match[1], content };
+}
+
+function encodeUtf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
+}
+
+function safeFilePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '-');
+}
+
+function attachmentExtension(contentType: string): string {
+  const extensions: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/svg+xml': 'svg',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+  };
+  return extensions[contentType.toLowerCase()] || 'bin';
+}
+
+export function buildPrintShopDispatchBundle(order: Order): PrintShopDispatchBundle {
+  const orderPart = safeFilePart(order.id);
+  const attachments: PrintShopAttachment[] = [];
+  const garments = order.items.map((item, itemIndex) => {
+    const itemPart = String(itemIndex + 1).padStart(2, '0');
+    const previews = {
+      front: item.designPreviews?.front || (item.designPreviewSide === 'front' ? item.designPreview : undefined),
+      back: item.designPreviews?.back || (item.designPreviewSide === 'back' ? item.designPreview : undefined),
+    };
+
+    if (!previews.front || !previews.back) {
+      throw new Error(`Item ${itemIndex + 1} is missing a saved front or back design preview.`);
+    }
+
+    const mockupFiles = {
+      front: `SALAPEED-${orderPart}-ITEM-${itemPart}-FRONT.jpg`,
+      back: `SALAPEED-${orderPart}-ITEM-${itemPart}-BACK.jpg`,
+    };
+    attachments.push(dataUrlToAttachment(previews.front, mockupFiles.front));
+    attachments.push(dataUrlToAttachment(previews.back, mockupFiles.back));
+
+    const printPlacements = (item.placements || []).map((element, placementIndex) => {
+      const side = element.side === 'sleeve' ? 'front' : element.side;
+      const zone = PRINT_ZONES.find((candidate) => candidate.name === element.zone && candidate.side === side) ||
+        (element.side === 'sleeve' ? PRINT_ZONES.find((candidate) => candidate.id === 'front-left-sleeve') : undefined);
+      const source = element.printReadyUrl || element.imageUrl;
+      const sourceIsDataUrl = source?.startsWith('data:') || false;
+      const artworkFilename = element.svgContent
+        ? `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}.svg`
+        : sourceIsDataUrl
+          ? `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}.${attachmentExtension(source!.slice(5).split(/[;,]/, 1)[0])}`
+          : undefined;
+
+      if (element.svgContent && artworkFilename) {
+        attachments.push(dataUrlToAttachment(
+          `data:image/svg+xml;base64,${encodeUtf8(element.svgContent)}`,
+          artworkFilename
+        ));
+      } else if (sourceIsDataUrl && artworkFilename) {
+        attachments.push(dataUrlToAttachment(source!, artworkFilename));
+      }
+
+      const zoneBounds = zone?.boundingBox;
+
+      return {
+        side,
+        zone: zone?.name || element.zone,
+        zoneBoundsPct: zoneBounds,
+        centerInZonePct: { x: element.x, y: element.y },
+        centerOnGarmentPct: zoneBounds ? {
+          x: zoneBounds.left + (element.x / 100) * zoneBounds.width,
+          y: zoneBounds.top + (element.y / 100) * zoneBounds.height,
+        } : undefined,
+        scale: element.scale,
+        rotationDegrees: element.rotation,
+        type: element.type,
+        text: element.type === 'text' ? {
+          content: element.textContent,
+          font: element.textFont,
+          color: element.textColor,
+          curved: element.textCurve,
+        } : undefined,
+        artworkName: element.graphicName,
+        artworkSvg: element.svgContent,
+        artworkFile: artworkFilename,
+        artworkSourceUrl: !element.svgContent && source && !sourceIsDataUrl
+          ? new URL(source, window.location.origin).href
+          : undefined,
+        lowResolutionUpload: element.isLowRes || undefined,
+      };
+    });
+
+    return {
+      itemIndex: itemIndex + 1,
+      productName: item.productName,
+      silhouette: item.imageType,
+      color: item.color,
+      size: item.size,
+      quantity: item.qty,
+      mockupFiles,
+      printPlacements,
+    };
+  });
+
+  const spec = {
+    orderId: order.id,
+    createdAt: order.createdAt,
+    paymentMethod: order.paymentMethod,
+    customer: {
+      name: order.customerName,
+      phone: order.customerPhone,
+      address: order.customerAddress,
+      notes: order.customerNotes,
+    },
+    garments,
+  };
+  attachments.push({
+    filename: `SALAPEED-${orderPart}-PRINT-PLACEMENTS.json`,
+    contentType: 'application/json',
+    content: encodeUtf8(JSON.stringify(spec, null, 2)),
+  });
+
+  return { spec, attachments };
+}
+
+export async function releasePrintShopPackage(
+  orderId: string,
+  recipient: string,
+  email: { subject: string; bodyHtml: string; bodyText: string },
+  bundle: PrintShopDispatchBundle
+): Promise<{ id: string }> {
+  const response = await fetch('/api/print-shop/dispatch', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      orderId,
+      to: recipient,
+      subject: email.subject,
+      html: email.bodyHtml.replace(/src=(['\"])data:[\s\S]*?\1/gi, ''),
+      text: email.bodyText,
+      bankConfirmed: true,
+      attachments: bundle.attachments,
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || 'The print-shop email could not be sent.');
+  }
+  return result;
 }
 
 /**
@@ -221,7 +401,7 @@ export function openPrintShopSpecSheet(order: Order): void {
           <div style="text-align: right;">
             <div style="font-size: 22px; font-weight: 900; font-family: monospace;">ORDER #${order.id}</div>
             <div style="display: inline-block; background: #39FF14; color: #000; font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-top: 4px;">
-              PAID VIA BENEFITPAY &bull; APPROVED FOR PRESS
+              PAYMENT MUST BE BANK-VERIFIED BEFORE PRESS RELEASE
             </div>
           </div>
         </div>
@@ -233,7 +413,7 @@ export function openPrintShopSpecSheet(order: Order): void {
           </div>
           <div>
             <strong>Delivery Address:</strong> ${pkg.customer.address}<br />
-            <strong>Payment Method:</strong> ${pkg.paymentMethod} (Verified BenefitPay)
+            <strong>Payment Method:</strong> ${pkg.paymentMethod} (bank verification required before release)
           </div>
         </div>
 

@@ -93,14 +93,14 @@ export function generateCustomerConfirmationEmail(order: Order): EmailSimulation
   const customerBodyText = `Hello ${order.customerName},
 
 Thank you for your order #${order.id} with Salapeed!
-Your custom hoodie is now queued for high-definition printing and stitching at our Bahrain workshop.
+Your custom hoodie will be queued for production after we verify your payment.
 
 ORDER SUMMARY:
 ${itemsSummaryText}
 
 Subtotal: BD ${order.subtotal.toFixed(3)}
 Delivery Fee: BD ${order.deliveryFee.toFixed(3)}
-Total Paid: BD ${order.total.toFixed(3)} (BenefitPay Verified)
+Order Total: BD ${order.total.toFixed(3)} (payment verification pending)
 
 Delivery Destination:
 ${order.customerAddress}
@@ -111,7 +111,7 @@ Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.websi
   return {
     to: recipient,
     from: 'orders@salapeed.com',
-    subject: `Order Confirmed: #${order.id} — Your Custom Salapeed Hoodie is in Production!`,
+    subject: `Order Received: #${order.id} — Payment Verification Pending`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: false,
     attachmentsCount: 0,
@@ -126,7 +126,7 @@ Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.websi
         <div style="margin-bottom: 20px;">
           <h3 style="margin: 0 0 6px 0; font-size: 18px; color: #ffffff;">Thank you, ${order.customerName}!</h3>
           <p style="margin: 0; font-size: 13px; color: #aaa; line-height: 1.5;">
-            We've received your custom hoodie order <strong>#${order.id}</strong>. Our Seef workshop team has queued your garments for high-definition printing and precision stitching.
+            We've received your custom hoodie order <strong>#${order.id}</strong>. Production will begin after your payment is verified.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.websi
             <span style="color: #fff; font-family: monospace;">BD ${order.deliveryFee.toFixed(3)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; border-top: 1px solid #1f242e; padding-top: 8px; font-size: 14px; font-weight: bold; color: #fff;">
-            <span>Total Paid (BenefitPay):</span>
+            <span>Order Total (verification pending):</span>
             <span style="color: #39FF14; font-family: monospace;">BD ${order.total.toFixed(3)}</span>
           </div>
         </div>
@@ -175,7 +175,8 @@ Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.websi
  */
 export function generatePrintShopPackageEmail(
   order: Order,
-  customShopEmail?: string
+  customShopEmail?: string,
+  bankConfirmed = false
 ): EmailSimulation {
   const shopEmail = customShopEmail || 'workshop@salapeed.com';
 
@@ -187,17 +188,6 @@ export function generatePrintShopPackageEmail(
 
   const garmentsBreakdown = order.items
     .map((item, idx) => {
-      const frontPhoto =
-        item.designPreviews?.front ||
-        (item.designPreviewSide === 'front' ? item.designPreview : undefined) ||
-        getHoodiePhoto(item.imageType, item.color, 'front');
-      const backPhoto =
-        item.designPreviews?.back ||
-        (item.designPreviewSide === 'back' ? item.designPreview : undefined) ||
-        getHoodiePhoto(item.imageType, item.color, 'back');
-      const sleevePhoto =
-        item.designPreviews?.sleeve || getHoodiePhoto(item.imageType, item.color, 'sleeve');
-
       const printPlacementsTable = (item.placements || [])
         .map(
           (p, pIdx) => `
@@ -227,22 +217,6 @@ export function generatePrintShopPackageEmail(
               SIZE: ${item.size} &bull; QTY: ${item.qty}
             </span>
             <div style="font-size: 11px; color: #fff; margin-top: 3px; font-weight: bold;">COLOR: ${item.color}</div>
-          </div>
-        </div>
-
-        <!-- High-Definition Operator Views -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-          <div style="background: #000; border: 1px solid #262c36; border-radius: 6px; padding: 8px; text-align: center;">
-            <div style="color: #39FF14; font-size: 10px; font-family: monospace; margin-bottom: 4px; font-weight: bold;">FRONT VIEW SPECIFICATION</div>
-            <img src="${frontPhoto}" alt="Front Spec" style="max-height: 160px; max-width: 100%; object-fit: contain;" />
-          </div>
-          <div style="background: #000; border: 1px solid #262c36; border-radius: 6px; padding: 8px; text-align: center;">
-            <div style="color: #39FF14; font-size: 10px; font-family: monospace; margin-bottom: 4px; font-weight: bold;">BACK VIEW SPECIFICATION</div>
-            <img src="${backPhoto}" alt="Back Spec" style="max-height: 160px; max-width: 100%; object-fit: contain;" />
-          </div>
-          <div style="background: #000; border: 1px solid #262c36; border-radius: 6px; padding: 8px; text-align: center;">
-            <div style="color: #39FF14; font-size: 10px; font-family: monospace; margin-bottom: 4px; font-weight: bold;">SLEEVE VIEW SPECIFICATION</div>
-            <img src="${sleevePhoto}" alt="Sleeve Spec" style="max-height: 160px; max-width: 100%; object-fit: contain;" />
           </div>
         </div>
 
@@ -290,10 +264,11 @@ ${placementsText || '   - Standard blank garment with Salapeed seal'}`;
     })
     .join('\n\n');
 
+  const paymentStatus = bankConfirmed ? 'Manually verified by admin' : 'Awaiting manual bank verification';
   const printShopBodyText = `SALAPEED BAHRAIN WORKSHOP PRODUCTION JOB #${order.id}
 ==================================================
 Date: ${new Date(order.createdAt).toLocaleString()}
-Payment Status: BenefitPay Verified (Total: BD ${order.total.toFixed(3)})
+Payment Status: ${paymentStatus} (Total: BD ${order.total.toFixed(3)})
 Total Garments to Produce: ${order.items.reduce((a, b) => a + b.qty, 0)} Pieces
 
 CUSTOMER & DISPATCH DETAILS:
@@ -306,10 +281,10 @@ GARMENTS & PRINT SPECIFICATIONS:
 --------------------------------------------------
 ${garmentsPlainText}
 
-HIGH-RESOLUTION ATTACHMENTS:
+PRINT FILES ATTACHED:
 --------------------------------------------------
-Total Artwork Attachments: ${totalArtworks} vector/SVG files
-Please review coordinates and proceed with printing & stitching.
+Front/back reference images, available original artwork, and the placement JSON are attached.
+Review any low-resolution upload flags before printing.
 
 --
 Salapeed Automated Workshop Dispatch System
@@ -336,11 +311,11 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
 
   return {
     to: shopEmail,
-    from: 'dispatch-system@salapeed.com',
+    from: 'Configured server sender',
     subject: `[PRODUCTION PACKAGE] Order #${order.id} - ${order.customerName} (${order.items.reduce((a, b) => a + b.qty, 0)} Pcs)`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: true,
-    attachmentsCount: totalArtworks,
+    attachmentsCount: order.items.length * 2 + 1,
     bodyText: printShopBodyText,
     mailtoBody: printShopMailtoBody,
     bodyHtml: `
@@ -354,15 +329,15 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
           </div>
           <div style="text-align: right;">
             <div style="font-size: 16px; font-weight: 900; color: #fff;">#${order.id}</div>
-            <div style="font-size: 11px; color: #39FF14; font-family: monospace;">PAYMENT: BENEFITPAY VERIFIED</div>
+            <div style="font-size: 11px; color: #39FF14; font-family: monospace;">PAYMENT: ${bankConfirmed ? 'MANUALLY VERIFIED BY ADMIN' : 'AWAITING MANUAL BANK VERIFICATION'}</div>
           </div>
         </div>
 
         <!-- Attached High-Resolution Assets Notice -->
         <div style="background: #141f14; border: 1px solid #39FF14; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: #bbf7d0;">
-          <strong>✓ High-Resolution Print-Ready Package Attached:</strong>
+          <strong>High-resolution print files and placement coordinates:</strong>
           <div style="font-size: 11px; color: #86efac; margin-top: 4px;">
-            Contains ${totalArtworks} high-resolution vector/SVG artwork file(s), full coordinate spec sheet, and mockups ready for direct-to-garment (DTG/DTF) RIP rasterization.
+            Includes front and back reference images, available original artwork, and a machine-readable placement specification for ${totalArtworks} layer(s).
           </div>
         </div>
 
