@@ -128,17 +128,6 @@ function safeFilePart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-');
 }
 
-function attachmentExtension(contentType: string): string {
-  const extensions: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/svg+xml': 'svg',
-    'image/webp': 'webp',
-    'image/gif': 'gif',
-  };
-  return extensions[contentType.toLowerCase()] || 'bin';
-}
-
 export function buildPrintShopDispatchBundle(order: Order): PrintShopDispatchBundle {
   const orderPart = safeFilePart(order.id);
   const attachments: PrintShopAttachment[] = [];
@@ -166,20 +155,6 @@ export function buildPrintShopDispatchBundle(order: Order): PrintShopDispatchBun
         (element.side === 'sleeve' ? PRINT_ZONES.find((candidate) => candidate.id === 'front-left-sleeve') : undefined);
       const source = element.printReadyUrl || element.imageUrl;
       const sourceIsDataUrl = source?.startsWith('data:') || false;
-      const artworkFilename = element.svgContent
-        ? `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}.svg`
-        : sourceIsDataUrl
-          ? `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}.${attachmentExtension(source!.slice(5).split(/[;,]/, 1)[0])}`
-          : undefined;
-
-      if (element.svgContent && artworkFilename) {
-        attachments.push(dataUrlToAttachment(
-          `data:image/svg+xml;base64,${encodeUtf8(element.svgContent)}`,
-          artworkFilename
-        ));
-      } else if (sourceIsDataUrl && artworkFilename) {
-        attachments.push(dataUrlToAttachment(source!, artworkFilename));
-      }
 
       const zoneBounds = zone?.boundingBox;
 
@@ -202,8 +177,6 @@ export function buildPrintShopDispatchBundle(order: Order): PrintShopDispatchBun
           curved: element.textCurve,
         } : undefined,
         artworkName: element.graphicName,
-        artworkSvg: element.svgContent,
-        artworkFile: artworkFilename,
         artworkSourceUrl: !element.svgContent && source && !sourceIsDataUrl
           ? new URL(source, window.location.origin).href
           : undefined,
