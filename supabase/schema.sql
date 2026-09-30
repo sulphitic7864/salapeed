@@ -22,12 +22,21 @@ create table if not exists public.graphics (
   id text primary key,
   name text not null,
   category text not null,
+  tags jsonb not null default '[]'::jsonb,
   svg_content text,
   preview_url text,
   print_ready_url text,
   is_custom boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.graphic_categories (
+  name text primary key,
+  created_at timestamptz not null default now()
+);
+
+alter table public.graphics
+  add column if not exists tags jsonb not null default '[]'::jsonb;
 
 create table if not exists public.products (
   id text primary key,
@@ -72,11 +81,12 @@ create table if not exists public.admin_config (
 
 alter table public.orders enable row level security;
 alter table public.graphics enable row level security;
+alter table public.graphic_categories enable row level security;
 alter table public.products enable row level security;
 alter table public.faqs enable row level security;
 alter table public.admin_config enable row level security;
 
-revoke all on table public.orders, public.graphics, public.products, public.faqs, public.admin_config from anon, authenticated;
+revoke all on table public.orders, public.graphics, public.graphic_categories, public.products, public.faqs, public.admin_config from anon, authenticated;
 
-grant select on table public.products, public.faqs, public.admin_config to anon, authenticated;
-grant all on table public.orders, public.graphics, public.products, public.faqs, public.admin_config to service_role;
+grant select on table public.products, public.faqs, public.admin_config, public.graphic_categories to anon, authenticated;
+grant all on table public.orders, public.graphics, public.graphic_categories, public.products, public.faqs, public.admin_config to service_role;
