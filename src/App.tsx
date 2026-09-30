@@ -11,9 +11,11 @@ import { CheckoutView } from './components/CheckoutView';
 import { OrderConfirmation } from './components/OrderConfirmation';
 import { OrderTracker } from './components/OrderTracker';
 import { AdminPortal } from './components/admin/AdminPortal';
+import { PasswordRecovery } from './components/PasswordRecovery';
 import { GarmentSelectionModal } from './components/GarmentSelectionModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { requestPasswordRecovery } from './lib/supabase';
 import {
   ShoppingBag,
   Sparkles,
@@ -27,6 +29,9 @@ import {
 
 export default function App() {
   const store = useAppStore();
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(
+    () => new URLSearchParams(window.location.search).get('reset-password') === '1'
+  );
 
   // Navigation screen
   const [currentScreen, setCurrentScreen] = useState<
@@ -61,6 +66,18 @@ export default function App() {
 
   // Cart count
   const cartCount = store.cart.reduce((acc, it) => acc + it.qty, 0);
+
+  if (isPasswordRecovery) {
+    return (
+      <PasswordRecovery
+        onBackToAdmin={() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setIsPasswordRecovery(false);
+          setCurrentScreen('admin');
+        }}
+      />
+    );
+  }
 
   // Navigation handlers
   const handleStartCustomizing = (prod?: Product, color?: string) => {
@@ -423,6 +440,7 @@ export default function App() {
           <AdminPortal
             isAdmin={store.isAdmin}
             onLogin={store.loginAdmin}
+            onRequestPasswordReset={requestPasswordRecovery}
             onLogout={store.logoutAdmin}
             orders={store.orders}
             products={store.products}

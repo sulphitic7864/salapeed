@@ -10,6 +10,44 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes('placeholder')
 );
 
+export async function requestPasswordRecovery(email: string): Promise<string | null> {
+  try {
+    const redirectTo = `${window.location.origin}/?reset-password=1`;
+    const response = await fetch(`${supabaseUrl}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
+      method: 'POST',
+      headers: { apikey: supabaseAnonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (response.ok) return null;
+    const result = await response.json().catch(() => ({}));
+    return result.msg || result.message || result.error_description || 'Could not send the recovery email.';
+  } catch {
+    return 'Could not contact Supabase. Check your connection and try again.';
+  }
+}
+
+export async function updatePasswordWithRecoveryToken(
+  accessToken: string,
+  password: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    });
+    if (response.ok) return null;
+    const result = await response.json().catch(() => ({}));
+    return result.msg || result.message || result.error_description || 'Could not update the password.';
+  } catch {
+    return 'Could not contact Supabase. Check your connection and try again.';
+  }
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
     const response = await fetch(path, {

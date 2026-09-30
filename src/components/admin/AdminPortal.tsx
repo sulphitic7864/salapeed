@@ -49,6 +49,7 @@ import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
 interface AdminPortalProps {
   isAdmin: boolean;
   onLogin: (email: string, password: string) => Promise<boolean>;
+  onRequestPasswordReset: (email: string) => Promise<string | null>;
   onLogout: () => void;
   orders: Order[];
   products: Product[];
@@ -72,6 +73,7 @@ interface AdminPortalProps {
 export const AdminPortal: React.FC<AdminPortalProps> = ({
   isAdmin,
   onLogin,
+  onRequestPasswordReset,
   onLogout,
   orders,
   products,
@@ -95,6 +97,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [emailInput, setEmailInput] = useState('');
   const [passInput, setPassInput] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   // Admin tabs
   const [activeTab, setActiveTab] = useState<
@@ -269,6 +272,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               required
             />
           </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              setResetMessage(null);
+              if (!emailInput.trim()) {
+                setResetMessage('Enter your admin email first.');
+                return;
+              }
+              const error = await onRequestPasswordReset(emailInput.trim());
+              setResetMessage(error || 'If the account exists, a password reset email has been sent.');
+            }}
+            className="text-xs text-[#39FF14] hover:underline cursor-pointer"
+          >
+            Forgot password?
+          </button>
+
+          {resetMessage && <div className="text-xs text-neutral-300">{resetMessage}</div>}
 
           {loginError && (
             <div className="text-xs text-red-400">
