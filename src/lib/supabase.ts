@@ -1,5 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Order, GraphicItem, AdminConfig, Product } from '../types';
+import { Order, GraphicItem, Product, FaqItem, AdminConfig } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -11,85 +10,98 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes('placeholder')
 );
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
-
-// Database helper functions with graceful fallbacks
-export async function syncOrderToSupabase(order: Order): Promise<boolean> {
-  if (!supabase) return false;
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
-    const { error } = await supabase.from('orders').upsert({
-      id: order.id,
-      created_at: order.createdAt,
-      customer_name: order.customerName,
-      customer_phone: order.customerPhone,
-      customer_address: order.customerAddress,
-      payment_method: order.paymentMethod,
-      items: order.items,
-      subtotal: order.subtotal,
-      delivery_fee: order.deliveryFee,
-      total: order.total,
-      status: order.status,
-      status_history: order.statusHistory,
-      customer_notes: order.customerNotes,
+    const response = await fetch(path, {
+      ...init,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
-    if (error) {
-      console.warn('Supabase order sync error:', error.message);
-      return false;
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      console.warn(`Supabase API request failed (${response.status}):`, result.error || response.statusText);
+      return null;
     }
-    return true;
-  } catch (err) {
-    console.warn('Supabase sync caught error:', err);
-    return false;
-  }
-}
-
-export async function fetchOrdersFromSupabase(): Promise<Order[] | null> {
-  if (!supabase) return null;
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error || !data) return null;
-
-    return data.map((d: any) => ({
-      id: d.id,
-      createdAt: d.created_at,
-      customerName: d.customer_name,
-      customerPhone: d.customer_phone,
-      customerAddress: d.customer_address,
-      paymentMethod: d.payment_method,
-      items: d.items || [],
-      subtotal: Number(d.subtotal),
-      deliveryFee: Number(d.delivery_fee),
-      total: Number(d.total),
-      status: d.status,
-      statusHistory: d.status_history || [],
-      customerNotes: d.customer_notes,
-    }));
-  } catch (err) {
-    console.warn('Supabase fetch orders error:', err);
+    if (response.status === 204) return null;
+    return await response.json() as T;
+  } catch (error) {
+    console.warn('Supabase API request could not be completed:', error);
     return null;
   }
 }
 
+export async function syncOrderToSupabase(order: Order, adminUpdate = false): Promise<boolean> {
+  const result = await requestJson<{ saved: boolean }>(
+    adminUpdate ? '/api/admin/orders' : '/api/orders',
+    { method: 'POST', body: JSON.stringify(order) }
+  );
+  return result?.saved === true;
+}
+
+export async function fetchOrdersFromSupabase(): Promise<Order[] | null> {
+  return requestJson<Order[]>('/api/admin/orders');
+}
+
+export async function fetchGraphicsFromSupabase(): Promise<GraphicItem[] | null> {
+  return requestJson<GraphicItem[]>('/api/graphics');
+}
+
+export async function fetchProductsFromSupabase(): Promise<Product[] | null> {
+  return requestJson<Product[]>('/api/products');
+}
+
+export async function fetchFaqsFromSupabase(): Promise<FaqItem[] | null> {
+  return requestJson<FaqItem[]>('/api/faqs');
+}
+
+export async function fetchAdminConfigFromSupabase(): Promise<AdminConfig | null> {
+  return requestJson<AdminConfig>('/api/admin/config');
+}
+
 export async function syncGraphicToSupabase(graphic: GraphicItem): Promise<boolean> {
-  if (!supabase) return false;
-  try {
-    const { error } = await supabase.from('graphics').upsert({
-      id: graphic.id,
-      name: graphic.name,
-      category: graphic.category,
-      svg_content: graphic.svgContent,
-      preview_url: graphic.previewUrl,
-      print_ready_url: graphic.printReadyUrl,
-      is_custom: graphic.isCustomAdmin,
-    });
-    return !error;
-  } catch {
-    return false;
-  }
+  const result = await requestJson<{ saved: boolean }>(
+    '/api/admin/graphics',
+    { method: 'POST', body: JSON.stringify(graphic) }
+  );
+  return result?.saved === true;
+}
+
+export async function syncProductToSupabase(product: Product): Promise<boolean> {
+  const result = await requestJson<{ saved: boolean }>(
+    '/api/admin/products',
+    { method: 'POST', body: JSON.stringify(product) }
+  );
+  return result?.saved === true;
+}
+
+export async function syncAdminConfigToSupabase(config: AdminConfig): Promise<boolean> {
+  const result = await requestJson<{ saved: boolean }>(
+    '/api/admin/config',
+    { method: 'POST', body: JSON.stringify(config) }
+  );
+  return result?.saved === true;
+}
+
+export async function syncFaqToSupabase(faq: FaqItem): Promise<boolean> {
+  const result = await requestJson<{ saved: boolean }>(
+    '/api/admin/faqs',
+    { method: 'POST', body: JSON.stringify(faq) }
+  );
+  return result?.saved === true;
+}
+
+export async function deleteFaqFromSupabase(id: string): Promise<boolean> {
+  const result = await requestJson<{ deleted: boolean }>(
+    `/api/admin/faqs/${encodeURIComponent(id)}`,
+    { method: 'DELETE' }
+  );
+  return result?.deleted === true;
+}
+
+export async function deleteGraphicFromSupabase(id: string): Promise<boolean> {
+  const result = await requestJson<{ deleted: boolean }>(
+    `/api/admin/graphics/${encodeURIComponent(id)}`,
+    { method: 'DELETE' }
+  );
+  return result?.deleted === true;
 }

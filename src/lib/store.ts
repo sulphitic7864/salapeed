@@ -19,7 +19,16 @@ import {
 import {
   syncOrderToSupabase,
   fetchOrdersFromSupabase,
+  fetchGraphicsFromSupabase,
+  fetchProductsFromSupabase,
+  fetchFaqsFromSupabase,
+  fetchAdminConfigFromSupabase,
   syncGraphicToSupabase,
+  deleteGraphicFromSupabase,
+  syncProductToSupabase,
+  syncAdminConfigToSupabase,
+  syncFaqToSupabase,
+  deleteFaqFromSupabase,
   isSupabaseConfigured,
 } from './supabase';
 
@@ -220,10 +229,14 @@ class Store {
   private listeners: Set<() => void> = new Set();
 
   constructor() {
-    this.loadState();
+    void this.loadState();
   }
 
-  private loadState() {
+  private mergeById<T extends { id: string }>(base: T[], remote: T[]) {
+    return Array.from(new Map([...base, ...remote].map((item) => [item.id, item])).values());
+  }
+
+  private async loadState() {
     try {
       const p = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (p) {
@@ -269,8 +282,9 @@ class Store {
       this.isAdminLoggedIn = false;
       if (savedAdminAuth) {
         fetch('/api/admin/session', { credentials: 'same-origin' })
-          .then((response) => {
+          .then(async (response) => {
             this.isAdminLoggedIn = response.ok;
+            if (response.ok) await this.loadRemoteOrders();
             if (!response.ok) localStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
             this.notify();
           })
@@ -280,14 +294,35 @@ class Store {
           });
       }
 
-      // If Supabase is configured, fetch latest orders asynchronously
       if (isSupabaseConfigured) {
-        fetchOrdersFromSupabase().then((remoteOrders) => {
-          if (remoteOrders && remoteOrders.length > 0) {
-            this.orders = remoteOrders;
-            this.notify();
-          }
-        });
+        const [remoteProducts, remoteGraphics, remoteFaqs, remoteConfig] = await Promise.all([
+          fetchProductsFromSupabase(),
+          fetchGraphicsFromSupabase(),
+          fetchFaqsFromSupabase(),
+          fetchAdminConfigFromSupabase(),
+        ]);
+
+        if (remoteProducts) {
+          this.products = this.mergeById(this.products, remoteProducts);
+          this.save(STORAGE_KEYS.PRODUCTS, this.products);
+        }
+
+        if (remoteGraphics) {
+          this.graphics = this.mergeById(this.graphics, remoteGraphics);
+          this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
+        }
+
+        if (remoteFaqs && remoteFaqs.length > 0) {
+          this.faqs = remoteFaqs;
+          this.save(STORAGE_KEYS.FAQS, this.faqs);
+        }
+
+        if (remoteConfig) {
+          this.config = { ...DEFAULT_ADMIN_CONFIG, ...remoteConfig };
+          this.save(STORAGE_KEYS.ADMIN_CONFIG, this.config);
+        }
+
+        this.notify();
       }
     } catch (e) {
       console.error('Error loading store state:', e);
@@ -310,6 +345,14 @@ class Store {
 
   private notify() {
     this.listeners.forEach((cb) => cb());
+  }
+
+  private async loadRemoteOrders() {
+    const remoteOrders = await fetchOrdersFromSupabase();
+    if (remoteOrders) {
+      this.orders = remoteOrders;
+      this.save(STORAGE_KEYS.ORDERS, this.orders);
+    }
   }
 
   public subscribe(listener: () => void) {
@@ -455,7 +498,7 @@ class Store {
           },
         ];
         const updated = { ...o, status, statusHistory: history };
-        syncOrderToSupabase(updated);
+        syncOrderToSupabase(updated, true);
         return updated;
       }
       return o;
@@ -495,6 +538,7 @@ class Store {
   public deleteGraphic(id: string) {
     this.graphics = this.graphics.filter((g) => g.id !== id);
     this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
+    deleteGraphicFromSupabase(id);
     this.notify();
   }
 
@@ -511,6 +555,7 @@ class Store {
   public updateConfig(patch: Partial<AdminConfig>) {
     this.config = { ...this.config, ...patch };
     this.save(STORAGE_KEYS.ADMIN_CONFIG, this.config);
+    syncAdminConfigToSupabase(this.config);
     this.notify();
   }
 
@@ -522,6 +567,8 @@ class Store {
       return p;
     });
     this.save(STORAGE_KEYS.PRODUCTS, this.products);
+    const updated = this.products.find((p) => p.id === productId);
+    if (updated) syncProductToSupabase(updated);
     this.notify();
   }
 
@@ -537,18 +584,22 @@ class Store {
     };
     this.faqs = [...this.faqs, newFaq];
     this.save(STORAGE_KEYS.FAQS, this.faqs);
+    syncFaqToSupabase(newFaq);
     this.notify();
   }
 
   public updateFaq(id: string, patch: Partial<FaqItem>) {
     this.faqs = this.faqs.map((f) => (f.id === id ? { ...f, ...patch } : f));
     this.save(STORAGE_KEYS.FAQS, this.faqs);
+    const updated = this.faqs.find((f) => f.id === id);
+    if (updated) syncFaqToSupabase(updated);
     this.notify();
   }
 
   public deleteFaq(id: string) {
     this.faqs = this.faqs.filter((f) => f.id !== id);
     this.save(STORAGE_KEYS.FAQS, this.faqs);
+    deleteFaqFromSupabase(id);
     this.notify();
   }
 
@@ -565,6 +616,7 @@ class Store {
 
       this.isAdminLoggedIn = true;
       localStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, 'true');
+      await this.loadRemoteOrders();
       this.notify();
       return true;
     } catch {
