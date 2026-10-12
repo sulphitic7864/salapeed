@@ -52,7 +52,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
               <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-black p-1 flex items-center justify-center border border-[#39FF14]/50">
-                    <img src="/assets/salapeed-logo.svg" alt="Salapeed" className="w-full h-full object-contain" />
+                    <img src="/logo-new.jpeg" alt="Salapeed" className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-white">Install Salapeed</h3>
