@@ -91,9 +91,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         <h2 className="text-2xl font-heading font-black text-white uppercase tracking-wider">
           Checkout
         </h2>
-        <p className="text-xs text-neutral-400">
+        {/* <p className="text-xs text-neutral-400">
           Fast guest checkout. Orders are dispatched across Bahrain from our Seef print shop.
-        </p>
+        </p> */}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
