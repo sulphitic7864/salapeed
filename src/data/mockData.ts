@@ -161,13 +161,13 @@ export const PRINT_ZONES: PrintZone[] = [
   },
   {
     id: 'front-left-sleeve',
-    name: 'Left Sleeve (Front)',
+    name: 'Left Sleeve',
     side: 'front',
     boundingBox: { top: 24, left: 72, width: 15, height: 44 },
   },
   {
     id: 'front-right-sleeve',
-    name: 'Right Sleeve (Front)',
+    name: 'Right Sleeve',
     side: 'front',
     boundingBox: { top: 24, left: 13, width: 15, height: 44 },
   },

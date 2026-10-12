@@ -38,6 +38,7 @@ import {
   Save,
   Check,
   Eye,
+  EyeOff,
   FileCode,
   Mail,
   Copy,
@@ -97,6 +98,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Login form state
   const [emailInput, setEmailInput] = useState('');
   const [passInput, setPassInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
@@ -273,19 +275,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           <div>
             <label className="text-xs text-neutral-400 block mb-1">Password</label>
-            <input
-              type="password"
-              value={passInput}
-              disabled={isLoggingIn}
-              onChange={(e) => {
-                setPassInput(e.target.value);
-                setLoginError(false);
-              }}
-              placeholder="Enter password..."
-              autoComplete="current-password"
-              className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-[#39FF14]"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={passInput}
+                disabled={isLoggingIn}
+                onChange={(e) => {
+                  setPassInput(e.target.value);
+                  setLoginError(false);
+                }}
+                placeholder="Enter password..."
+                autoComplete="current-password"
+                className="w-full px-3.5 py-2.5 pr-10 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-[#39FF14]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                disabled={isLoggingIn}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-neutral-400 hover:text-white disabled:cursor-not-allowed"
+              >
+                {showPassword
+                  ? <EyeOff className="w-4 h-4" aria-hidden="true" />
+                  : <Eye className="w-4 h-4" aria-hidden="true" />}
+              </button>
+            </div>
           </div>
 
           <button
@@ -1680,7 +1696,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               <div className="flex items-center justify-between border-t border-neutral-300 pt-3 text-xs font-mono">
-                <div>Fulfillment Facility: Salapeed Kingdom of Bahrain</div>
+                <div>Fulfillment: Salapeed, Kingdom of Bahrain</div>
                 <div className="font-bold text-sm">TOTAL VALUE: {formatBHD(specModalOrder.total)}</div>
               </div>
             </div>

@@ -23,6 +23,8 @@ import {
   Search,
   Lock,
   LogIn,
+  LogOut,
+  LayoutDashboard,
   Home,
   Layers,
 } from 'lucide-react';
@@ -66,6 +68,17 @@ export default function App() {
 
   // Cart count
   const cartCount = store.cart.reduce((acc, it) => acc + it.qty, 0);
+  const adminActionLabel = store.isAdmin
+    ? currentScreen === 'admin' ? 'Logout' : 'Admin Panel'
+    : 'Login';
+  const handleAdminAction = () => {
+    if (store.isAdmin && currentScreen === 'admin') {
+      store.logoutAdmin();
+      setCurrentScreen('home');
+      return;
+    }
+    setCurrentScreen('admin');
+  };
 
   if (isPasswordRecovery) {
     return (
@@ -218,7 +231,7 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Right Header CTAs: PWA Install + Cart + Login */}
+          {/* Right Header CTAs: PWA Install + Cart + Admin access */}
           <div className="flex items-center gap-2">
             <PWAInstallButton compact />
 
@@ -236,18 +249,22 @@ export default function App() {
               )}
             </button>
 
-            {/* Login Button (Right to Cart Icon) */}
+            {/* Admin access button (Right to Cart Icon) */}
             <button
-              onClick={() => setCurrentScreen('admin')}
+              onClick={handleAdminAction}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition cursor-pointer ${
                 currentScreen === 'admin'
                   ? 'bg-[#39FF14]/15 border-[#39FF14] text-[#39FF14]'
                   : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700'
               }`}
-              title="Login"
+              title={adminActionLabel}
             >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Login</span>
+              {adminActionLabel === 'Logout'
+                ? <LogOut className="w-3.5 h-3.5" />
+                : adminActionLabel === 'Admin Panel'
+                  ? <LayoutDashboard className="w-3.5 h-3.5" />
+                  : <LogIn className="w-3.5 h-3.5" />}
+              <span>{adminActionLabel}</span>
             </button>
           </div>
         </div>
@@ -531,13 +548,13 @@ export default function App() {
             <span>· Custom Print Hoodie App v1.0 (Bahrain)</span>
           </div>
           <div className="flex items-center gap-4 text-[11px] font-mono">
-            <span>Fulfillment: Workshop in Seef</span>
+            {/* <span>Fulfillment: Workshop in Seef</span> */}
             <span>Currency: BHD</span>
             <button
-              onClick={() => setCurrentScreen('admin')}
+              onClick={handleAdminAction}
               className="text-neutral-400 hover:text-[#39FF14] cursor-pointer"
             >
-              Login
+              {adminActionLabel}
             </button>
           </div>
         </div>

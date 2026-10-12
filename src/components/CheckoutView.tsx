@@ -129,7 +129,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
             <div>
               <label className="text-xs text-neutral-400 block mb-1">
-                Email Address (For Automated Design Renderings) <span className="text-[#39FF14]">*</span>
+                Email Address <span className="text-[#39FF14]">*</span>
               </label>
               <input
                 type="email"
@@ -139,9 +139,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-white focus:outline-none focus:border-[#39FF14]"
                 required
               />
-              <span className="text-[10px] text-neutral-500 mt-1 block">
+              {/* <span className="text-[10px] text-neutral-500 mt-1 block">
                 We'll email you high-definition visual renderings of your customized hoodie immediately upon placing your order.
-              </span>
+              </span> */}
             </div>
 
             <div>
@@ -158,9 +158,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   required
                 />
               </div>
-              <span className="text-[10px] text-neutral-500 mt-1 block">
+              {/* <span className="text-[10px] text-neutral-500 mt-1 block">
                 We send order confirmation and live dispatch updates to this phone number.
-              </span>
+              </span> */}
             </div>
           </div>
         </div>

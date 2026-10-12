@@ -176,7 +176,7 @@ Workshop in Seef, Bahrain • ${SALAPEED_BRAND.phone} • ${SALAPEED_BRAND.websi
         </div>
 
         <div style="text-align: center; font-size: 11px; color: #666; font-family: monospace; border-top: 1px solid #1f242e; padding-top: 16px;">
-          Salapeed Streetwear &bull; Workshop in Seef, Bahrain &bull; ${SALAPEED_BRAND.phone}
+          Salapeed &bull; Bahrain &bull; ${SALAPEED_BRAND.phone}
         </div>
       </div>
     `,
@@ -348,13 +348,6 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
           </div>
         </div>
 
-        <!-- Attached High-Resolution Assets Notice -->
-        <div style="background: #141f14; border: 1px solid #39FF14; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: #bbf7d0;">
-          <strong>High-resolution print files and placement coordinates:</strong>
-          <div style="font-size: 11px; color: #86efac; margin-top: 4px;">
-            Includes front and back reference images, available original artwork, and a machine-readable placement specification for ${totalArtworks} layer(s).
-          </div>
-        </div>
 
         <!-- Customer & Dispatch Coordinates -->
         <div style="background: #101318; border: 1px solid #222; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px;">

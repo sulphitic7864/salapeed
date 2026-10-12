@@ -367,7 +367,7 @@ export function openPrintShopSpecSheet(order: Order): void {
 
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px;">
           <div>
-            <h1 style="margin: 0; font-size: 24px; letter-spacing: 1px; font-weight: 900;">SALAPEED STREETWEAR</h1>
+            <h1 style="margin: 0; font-size: 24px; letter-spacing: 1px; font-weight: 900;">SALAPEED</h1>
             <div style="font-size: 13px; font-weight: bold; color: #444; margin-top: 4px;">BAHRAIN CENTRAL APPAREL PRINT WORKSHOP & EMBROIDERY</div>
             <div style="font-size: 12px; color: #666;">Generated: ${new Date(pkg.generatedAt).toLocaleString()}</div>
           </div>

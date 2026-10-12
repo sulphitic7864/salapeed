@@ -243,14 +243,14 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
 
           {/* Electronic File and Support */}
           <div className="flex flex-col sm:flex-row gap-2">
-            <button
+            {/* <button
               type="button"
               onClick={() => downloadPrintShopElectronicFile(currentOrder)}
               className="flex-1 py-2.5 px-4 bg-[#121418] hover:bg-[#1a1e26] text-[#39FF14] border border-[#39FF14]/40 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <FileCode className="w-4 h-4" />
               <span>Download Workshop Print File (.JSON)</span>
-            </button>
+            </button> */}
             <a
               href={`tel:${config.shopPhone.replace(/[^0-9+]/g, '')}`}
               className="py-2.5 px-4 bg-[#121418] hover:bg-[#1a1e26] text-neutral-300 hover:text-white border border-neutral-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
