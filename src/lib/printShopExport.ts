@@ -223,6 +223,26 @@ export async function releasePrintShopPackage(
   email: { subject: string; bodyHtml: string; bodyText: string },
   bundle: PrintShopDispatchBundle
 ): Promise<{ id: string }> {
+  return dispatchPrintShopPackage(orderId, recipient, email, bundle, true, 'production_release');
+}
+
+export async function notifyPrintShopOfNewOrder(
+  orderId: string,
+  recipient: string,
+  email: { subject: string; bodyHtml: string; bodyText: string },
+  bundle: PrintShopDispatchBundle
+): Promise<{ id: string }> {
+  return dispatchPrintShopPackage(orderId, recipient, email, bundle, false, 'order_placed');
+}
+
+async function dispatchPrintShopPackage(
+  orderId: string,
+  recipient: string,
+  email: { subject: string; bodyHtml: string; bodyText: string },
+  bundle: PrintShopDispatchBundle,
+  bankConfirmed: boolean,
+  dispatchType: 'production_release' | 'order_placed'
+): Promise<{ id: string }> {
   const response = await fetch('/api/print-shop/dispatch', {
     method: 'POST',
     credentials: 'same-origin',
@@ -230,12 +250,13 @@ export async function releasePrintShopPackage(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      dispatchType,
       orderId,
       to: recipient,
       subject: email.subject,
       html: email.bodyHtml.replace(/src=(['\"])data:[\s\S]*?\1/gi, ''),
       text: email.bodyText,
-      bankConfirmed: true,
+      bankConfirmed,
       attachments: bundle.attachments,
     }),
   });

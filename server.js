@@ -536,17 +536,43 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
   const sessionSecret = getAdminSessionSecret();
   const from = process.env.PRINT_SHOP_FROM_EMAIL;
+  const {
+    dispatchType = 'production_release',
+    orderId,
+    to,
+    subject,
+    html,
+    text,
+    bankConfirmed,
+    attachments,
+  } = request.body || {};
+  const isOrderPlacedNotification = dispatchType === 'order_placed';
 
-  if (!host || !Number.isInteger(port) || port < 1 || port > 65535 || !sessionSecret || !from || (!!username !== !!password)) {
+  if (
+    !host ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535 ||
+    (!isOrderPlacedNotification && !sessionSecret) ||
+    !from ||
+    (!!username !== !!password)
+  ) {
     return response.status(503).json({ error: 'SMTP email or server-side admin authentication is not configured correctly.' });
   }
-  if (!hasValidAdminSession(request, sessionSecret)) {
+  if (dispatchType !== 'production_release' && !isOrderPlacedNotification) {
+    return response.status(400).json({ error: 'Invalid print-shop dispatch type.' });
+  }
+  if (!isOrderPlacedNotification && !hasValidAdminSession(request, sessionSecret)) {
     clearAdminSession(response);
     return response.status(401).json({ error: 'Admin session expired. Sign in again before releasing this order.' });
   }
 
-  const { orderId, to, subject, html, text, bankConfirmed, attachments } = request.body || {};
-  if (!bankConfirmed) return response.status(400).json({ error: 'Confirm the bank payment before releasing this order.' });
+  if (isOrderPlacedNotification && bankConfirmed !== false) {
+    return response.status(400).json({ error: 'New-order notifications must remain pending payment verification.' });
+  }
+  if (!isOrderPlacedNotification && bankConfirmed !== true) {
+    return response.status(400).json({ error: 'Confirm the bank payment before releasing this order.' });
+  }
   if (typeof orderId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(orderId)) {
     return response.status(400).json({ error: 'Invalid order number.' });
   }
@@ -555,6 +581,26 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
   }
   if (typeof subject !== 'string' || typeof html !== 'string' || typeof text !== 'string' || !Array.isArray(attachments)) {
     return response.status(400).json({ error: 'The production email package is incomplete.' });
+  }
+  if (isOrderPlacedNotification) {
+    try {
+      const [orders, configs] = await Promise.all([
+        supabaseRequest(`orders?${new URLSearchParams({ id: `eq.${orderId}`, select: 'id,status', limit: '1' })}`),
+        supabaseRequest('admin_config?select=shop_email&limit=1'),
+      ]);
+      const savedOrder = Array.isArray(orders) ? orders[0] : null;
+      const configuredRecipient = Array.isArray(configs) ? configs[0]?.shop_email : '';
+      if (!savedOrder) return response.status(404).json({ error: 'The order must be saved before its notification can be sent.' });
+      if (savedOrder.status !== 'Order placed') {
+        return response.status(409).json({ error: 'Order notifications are only allowed before production release.' });
+      }
+      if (typeof configuredRecipient !== 'string' || configuredRecipient.toLowerCase() !== to.toLowerCase()) {
+        return response.status(403).json({ error: 'Order notifications can only be sent to the configured print-shop email.' });
+      }
+    } catch (error) {
+      console.error('Could not validate new-order print-shop notification:', error);
+      return response.status(error.statusCode || 502).json({ error: 'Could not verify the saved order or print-shop email.' });
+    }
   }
 
   const emailAttachments = [];
@@ -596,7 +642,7 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
     const result = await transporter.sendMail({
       from,
       to,
-      subject,
+      subject: isOrderPlacedNotification ? `[NEW ORDER — PAYMENT PENDING] ${subject}` : subject,
       html: emailHtml,
       text,
       attachments: emailAttachments.map((attachment) => ({

@@ -16,6 +16,8 @@ import { GarmentSelectionModal } from './components/GarmentSelectionModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { requestPasswordRecovery } from './lib/supabase';
+import { generatePrintShopPackageEmail } from './lib/orderEmailService';
+import { buildPrintShopDispatchBundle, notifyPrintShopOfNewOrder } from './lib/printShopExport';
 import {
   ShoppingBag,
   Sparkles,
@@ -170,6 +172,14 @@ export default function App() {
       paymentMethod: orderData.paymentMethod,
       notes: orderData.notes,
     });
+
+    try {
+      const email = generatePrintShopPackageEmail(newOrder, store.config.shopEmail, false);
+      const bundle = buildPrintShopDispatchBundle(newOrder);
+      await notifyPrintShopOfNewOrder(newOrder.id, email.to, email, bundle);
+    } catch (error) {
+      console.error(`Formatted print-shop order notification failed for ${newOrder.id}:`, error);
+    }
 
     setLastPlacedOrder(newOrder);
     setTrackedOrderId(newOrder.id);

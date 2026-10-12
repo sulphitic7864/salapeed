@@ -1500,6 +1500,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               <div>
+                <label className="text-neutral-400 block mb-1">Print Shop Email (order notifications)</label>
+                <input
+                  type="email"
+                  value={config.shopEmail}
+                  onChange={(e) => onUpdateConfig({ shopEmail: e.target.value })}
+                  placeholder="workshop@example.com"
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white"
+                />
+              </div>
+
+              <div>
                 <label className="text-neutral-400 block mb-1">BenefitPay Mobile Phone</label>
                 <input
                   type="text"
