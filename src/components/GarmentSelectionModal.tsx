@@ -110,6 +110,8 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
                 const previewColor = isSelected && selectedColor
                   ? selectedColor
                   : prod.colors[0] || 'Black';
+                const previewUsesDarkBackground =
+                  previewColor === 'White' || previewColor === 'Heather Grey';
                 const previewPhoto = prod.colorPhotos?.[previewColor] || getHoodiePhoto(
                   prod.imageType,
                   previewColor,
@@ -134,7 +136,11 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
                       </span>
                     )}
 
-                    <div className="w-full h-24 mb-2 rounded-lg bg-black/40 p-1 flex items-center justify-center overflow-hidden">
+                    <div
+                      className={`w-full h-24 mb-2 rounded-lg ${
+                        previewUsesDarkBackground ? 'bg-gradient-to-b from-[#181b22] to-[#0e1014]' : 'bg-neutral-100'
+                      } p-1 flex items-center justify-center overflow-hidden`}
+                    >
                       <img
                         src={previewPhoto}
                         onError={(event) => {
@@ -280,7 +286,13 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
           {/* High-Definition Preview Card if all 3 are picked */}
           {isFormComplete && selectedProduct && (
             <div className="p-3.5 rounded-xl bg-black/60 border border-[#39FF14]/50 flex items-center gap-4 animate-fadeIn">
-              <div className="w-16 h-16 rounded-lg bg-[#0c0e12] border border-neutral-800 p-1 flex items-center justify-center shrink-0">
+              <div
+                className={`w-16 h-16 rounded-lg ${
+                  selectedColor === 'White' || selectedColor === 'Heather Grey'
+                    ? 'bg-gradient-to-b from-[#181b22] to-[#0e1014]'
+                    : 'bg-neutral-100'
+                } border border-neutral-800 p-1 flex items-center justify-center shrink-0`}
+              >
                 <img
                   src={getHoodiePhoto(
                     selectedProduct.imageType,
