@@ -61,6 +61,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   // Interactive Hero Color State
   const [heroColor, setHeroColor] = useState<string>('Black');
+  const heroUsesDarkBackground = heroColor === 'White' || heroColor === 'Heather Grey';
 
   // Stacked FAQ Accordion State - by default, 1st item (index 0) is OPEN
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -175,10 +176,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Right Column: Hero Hoodie Visual with Live Color Swatches */}
           <div className="lg:col-span-5 flex flex-col items-center">
-            <div className="w-full relative rounded-2xl bg-gradient-to-b from-[#161a22] to-[#0d0f14] border border-neutral-800/90 p-5 shadow-inner group">
+            <div
+              className={`w-full relative rounded-2xl ${
+                heroUsesDarkBackground ? 'bg-gradient-to-b from-[#161a22] to-[#0d0f14]' : 'bg-neutral-100'
+              } border border-neutral-800/90 p-5 shadow-inner group`}
+            >
               {/* Badge */}
-              <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 pb-3 border-b border-neutral-800/60">
-                <span className="text-white font-bold uppercase tracking-wider truncate max-w-[200px]">
+              <div className={`flex items-center justify-between text-[11px] font-mono ${
+                heroUsesDarkBackground ? 'text-neutral-400 border-neutral-800/60' : 'text-neutral-600 border-neutral-300'
+              } pb-3 border-b`}>
+                <span className={`font-bold uppercase tracking-wider truncate max-w-[200px] ${
+                  heroUsesDarkBackground ? 'text-white' : 'text-neutral-900'
+                }`}>
                   #1 {heroHoodie?.brochureTitle || heroHoodie?.name}
                 </span>
                 <span className="text-[#39FF14] font-bold">
@@ -206,13 +215,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
 
               {/* Live Color Swatch Selector for Hero Hoodie */}
-              <div className="pt-2.5 border-t border-neutral-800/60 flex items-center justify-between">
-                <span className="text-[11px] font-mono text-neutral-400">
-                  Color: <strong className="text-white">{heroColor}</strong>
+              <div className={`pt-2.5 border-t flex items-center justify-between ${
+                heroUsesDarkBackground ? 'border-neutral-800/60' : 'border-neutral-300'
+              }`}>
+                <span className={`text-[11px] font-mono ${
+                  heroUsesDarkBackground ? 'text-neutral-400' : 'text-neutral-600'
+                }`}>
+                  Color: <strong className={heroUsesDarkBackground ? 'text-white' : 'text-neutral-900'}>{heroColor}</strong>
                 </span>
 
                 <div className="flex items-center gap-1.5">
-                  {['Black', 'Navy', 'Heather Grey', 'Red', 'Charcoal'].map((cName) => {
+                  {['Black', 'Navy', 'Heather Grey', 'Red', 'Charcoal', 'White'].map((cName) => {
                     const cOpt = COLOR_OPTIONS[cName];
                     if (!cOpt) return null;
                     const isActive = heroColor === cName;

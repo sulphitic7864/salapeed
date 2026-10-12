@@ -307,7 +307,13 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
                   </div>
 
                   {/* Shrunk Hoodie 3D Mockup Stage for More per Row */}
-                  <div className="w-full aspect-[4/3] rounded-lg relative overflow-hidden bg-gradient-to-b from-[#181b22] to-[#0e1014] border border-neutral-800/80 p-2 flex items-center justify-center group-hover:border-neutral-700 transition">
+                  <div
+                    className={`w-full aspect-[4/3] rounded-lg relative overflow-hidden ${
+                      currentColor === 'White' || currentColor === 'Heather Grey'
+                        ? 'bg-gradient-to-b from-[#181b22] to-[#0e1014]'
+                        : 'bg-white'
+                    } border border-neutral-800/80 p-2 flex items-center justify-center group-hover:border-neutral-700 transition`}
+                  >
                     <div className="w-full h-full max-h-[95%] flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300 ease-out">
                       <img
                         src={getHoodiePhoto(product.imageType, currentColor, 'front', product)}

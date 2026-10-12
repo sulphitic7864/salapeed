@@ -23,6 +23,7 @@ import zipGreyBack from '../assets/images/zip_grey_back.jpg';
 export const COLOR_OPTIONS: Record<string, ColorOption> = {
   Navy: { name: 'Navy', hex: '#1d2a44', ink: '#f0f4f8' },
   Black: { name: 'Black', hex: '#121417', ink: '#f0f4f8' },
+  White: { name: 'White', hex: '#ffffff', ink: '#121417' },
   'Heather Grey': { name: 'Heather Grey', hex: '#c5c7cb', ink: '#121417' },
   Red: { name: 'Red', hex: '#b31e24', ink: '#f0f4f8' },
   Charcoal: { name: 'Charcoal', hex: '#2e3238', ink: '#f0f4f8' },

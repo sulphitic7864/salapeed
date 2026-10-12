@@ -65,7 +65,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
       <div className="blueprint-card overflow-hidden bg-[#111317] border-neutral-800">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 sm:p-7">
           {/* Left: Realistic Interactive Garment Mockup Stage */}
-          <div className="relative w-full aspect-[4/5] max-w-[400px] mx-auto rounded-2xl bg-gradient-to-b from-[#181a22] to-[#0c0d10] border border-neutral-800 p-4 flex flex-col items-center justify-between shadow-2xl overflow-hidden">
+          <div
+            className={`relative w-full aspect-[4/5] max-w-[400px] mx-auto rounded-2xl ${
+              selectedColor === 'White' || selectedColor === 'Heather Grey'
+                ? 'bg-gradient-to-b from-[#181a22] to-[#0c0d10]'
+                : 'bg-neutral-100'
+            } border border-neutral-800 p-4 flex flex-col items-center justify-between shadow-2xl overflow-hidden`}
+          >
             {/* Background Blueprint Grid */}
             <div className="absolute inset-0 sp-stripes-subtle opacity-35 pointer-events-none" />
 

@@ -629,7 +629,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         key={idx}
                         className="p-2.5 bg-neutral-900/60 rounded-lg border border-neutral-800 flex items-center gap-3"
                       >
-                        <div className="w-24 h-14 bg-black rounded p-1 grid grid-cols-3 gap-1 shrink-0 border border-neutral-800">
+                        <div className="w-20 h-14 bg-black rounded p-1 grid grid-cols-2 gap-1 shrink-0 border border-neutral-800">
                           <img
                             src={it.designPreviews?.front || (it.designPreviewSide === 'front' ? it.designPreview : undefined) || getHoodiePhoto(it.imageType, it.color, 'front')}
                             alt={`${it.productName} front`}
@@ -638,11 +638,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           <img
                             src={it.designPreviews?.back || (it.designPreviewSide === 'back' ? it.designPreview : undefined) || getHoodiePhoto(it.imageType, it.color, 'back')}
                             alt={`${it.productName} back`}
-                            className="max-h-full max-w-full object-contain"
-                          />
-                          <img
-                            src={it.designPreviews?.sleeve || getHoodiePhoto(it.imageType, it.color, 'sleeve')}
-                            alt={`${it.productName} sleeve`}
                             className="max-h-full max-w-full object-contain"
                           />
                         </div>
