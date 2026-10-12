@@ -298,7 +298,7 @@ ${garmentsPlainText}
 
 PRINT FILES ATTACHED:
 --------------------------------------------------
-Front/back reference images, available original artwork, and the placement JSON are attached.
+Front/back reference images and placed artwork as PNG files are attached.
 Review any low-resolution upload flags before printing.
 
 --
@@ -321,7 +321,7 @@ ${order.customerNotes ? `Notes: ${order.customerNotes}\n` : ''}Payment: BenefitP
 GARMENTS TO PRODUCE (${order.items.reduce((a, b) => a + b.qty, 0)} Total):
 ${itemsSummaryShort}
 
-Artwork: ${totalArtworks} high-res vector files on record.
+Artwork: ${totalArtworks} placed artwork items; raster artwork is attached as PNG files.
 Workshop: Seef, Manama, Kingdom of Bahrain`;
 
   return {
@@ -330,7 +330,13 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
     subject: `[PRODUCTION PACKAGE] Order #${order.id} - ${order.customerName} (${order.items.reduce((a, b) => a + b.qty, 0)} Pcs)`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: true,
-    attachmentsCount: order.items.length * 2 + 1,
+    attachmentsCount:
+      order.items.length * 2 +
+      order.items.reduce(
+        (count, item) =>
+          count + (item.placements || []).filter((placement) => placement.type === 'graphic' || placement.type === 'upload').length,
+        0
+      ),
     bodyText: printShopBodyText,
     mailtoBody: printShopMailtoBody,
     bodyHtml: `

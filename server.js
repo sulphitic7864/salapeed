@@ -611,7 +611,7 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
       typeof attachment?.contentType !== 'string' ||
       typeof attachment?.content !== 'string' ||
       !/^[a-zA-Z0-9_.-]{1,180}$/.test(attachment.filename) ||
-      !/^[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+$/.test(attachment.contentType) ||
+      !['image/jpeg', 'image/png'].includes(attachment.contentType) ||
       !/^[A-Za-z0-9+/]*={0,2}$/.test(attachment.content)
     ) {
       return response.status(400).json({ error: 'A print attachment is invalid.' });

@@ -656,11 +656,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 {/* Print Shop Spec Sheet & Dispatch Actions */}
-                <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-xs font-mono">
                     <span className="text-neutral-400">Total: </span>
                     <span className="text-[#39FF14] font-bold text-sm">{formatBHD(o.total)}</span>
                   </div>
+                <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center justify-between gap-2">
 
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Open Interactive In-App Print Shop Spec Sheet */}
@@ -697,7 +697,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     </button>
 
                     {/* Download Electronic JSON Package */}
-                    <button
+                    {/* <button
                       type="button"
                       onClick={() => downloadPrintShopElectronicFile(o)}
                       className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 text-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer font-mono"
@@ -705,7 +705,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     >
                       <Download className="w-3.5 h-3.5 text-[#39FF14]" />
                       <span>Download JSON</span>
-                    </button>
+                    </button> */}
 
                     {/* Send to Print Shop via WhatsApp (Internal Shop Flow) */}
                     <button
@@ -1773,7 +1773,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 setEmailDispatchStatus('sending');
                 setEmailDispatchError(null);
                 try {
-                  const bundle = buildPrintShopDispatchBundle(emailModalOrder);
+                  const bundle = await buildPrintShopDispatchBundle(emailModalOrder);
                   const result = await releasePrintShopPackage(
                     emailModalOrder.id,
                     targetEmail,

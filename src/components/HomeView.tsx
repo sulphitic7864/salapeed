@@ -289,17 +289,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 {/* Garment Image Showcase */}
                 <div
                   onClick={() => onStartCustomizing(hoodie)}
-                  className="relative w-full h-52 bg-gradient-to-b from-[#151922] to-[#0e1015] p-3 flex items-center justify-center cursor-pointer overflow-hidden"
+                  className="relative w-full h-52 bg-white p-3 flex items-center justify-center cursor-pointer overflow-hidden"
                 >
                   {/* Position Tag */}
-                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded bg-black/80 border border-neutral-700/80 text-[10px] font-mono text-neutral-300">
+                  <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded bg-black/85 border border-neutral-800 text-[10px] font-mono text-white shadow-sm z-10">
                     {isKids ? '★ #1 KIDS FAVORITE' : `${idx + 1}. 380 GSM FLEECE`}
                   </div>
 
                   <img
                     src={hoodie.photoUrl || getHoodiePhoto(hoodie.imageType, hoodie.colors[0] || 'Navy', 'front', hoodie)}
                     alt={hoodie.name}
-                    className="w-full h-full object-contain filter drop-shadow-[0_10px_16px_rgba(0,0,0,0.8)] transition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-full object-contain filter drop-shadow-[0_10px_16px_rgba(0,0,0,0.2)] transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
 

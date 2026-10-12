@@ -175,7 +175,7 @@ export default function App() {
 
     try {
       const email = generatePrintShopPackageEmail(newOrder, store.config.shopEmail, false);
-      const bundle = buildPrintShopDispatchBundle(newOrder);
+      const bundle = await buildPrintShopDispatchBundle(newOrder);
       await notifyPrintShopOfNewOrder(newOrder.id, email.to, email, bundle);
     } catch (error) {
       console.error(`Formatted print-shop order notification failed for ${newOrder.id}:`, error);
