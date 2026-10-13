@@ -1,5 +1,17 @@
 import { Order, GraphicItem, Product, FaqItem, AdminConfig } from '../types';
 
+export interface PrintShopOrderNotification {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export interface OrderSyncResult {
+  saved: boolean;
+  notificationSent?: boolean;
+  notificationError?: string;
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
@@ -68,12 +80,22 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T | nul
   }
 }
 
-export async function syncOrderToSupabase(order: Order, adminUpdate = false): Promise<boolean> {
-  const result = await requestJson<{ saved: boolean }>(
+export async function syncOrderToSupabase(
+  order: Order,
+  adminUpdate = false,
+  printShopNotification?: PrintShopOrderNotification
+): Promise<OrderSyncResult> {
+  const result = await requestJson<OrderSyncResult>(
     adminUpdate ? '/api/admin/orders' : '/api/orders',
-    { method: 'POST', body: JSON.stringify(order) }
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        ...order,
+        ...(printShopNotification ? { printShopNotification } : {}),
+      }),
+    }
   );
-  return result?.saved === true;
+  return result || { saved: false };
 }
 
 export async function fetchOrdersFromSupabase(): Promise<Order[] | null> {

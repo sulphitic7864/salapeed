@@ -16,8 +16,6 @@ import { GarmentSelectionModal } from './components/GarmentSelectionModal';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { requestPasswordRecovery } from './lib/supabase';
-import { generatePrintShopPackageEmail } from './lib/orderEmailService';
-import { buildPrintShopDispatchBundle, notifyPrintShopOfNewOrder } from './lib/printShopExport';
 import {
   ShoppingBag,
   Sparkles,
@@ -66,6 +64,7 @@ export default function App() {
 
   // Last confirmed order
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
+  const [printShopNotificationFailed, setPrintShopNotificationFailed] = useState(false);
   const [trackedOrderId, setTrackedOrderId] = useState<string>('');
 
   // Cart count
@@ -164,7 +163,7 @@ export default function App() {
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
   }) => {
-    const newOrder = await store.createOrder({
+    const result = await store.createOrder({
       customerName: orderData.customerName,
       customerEmail: orderData.customerEmail,
       customerPhone: orderData.customerPhone,
@@ -173,14 +172,8 @@ export default function App() {
       notes: orderData.notes,
     });
 
-    try {
-      const email = generatePrintShopPackageEmail(newOrder, store.config.shopEmail, false);
-      const bundle = await buildPrintShopDispatchBundle(newOrder);
-      await notifyPrintShopOfNewOrder(newOrder.id, email.to, email, bundle);
-    } catch (error) {
-      console.error(`Formatted print-shop order notification failed for ${newOrder.id}:`, error);
-    }
-
+    const newOrder = result.order;
+    setPrintShopNotificationFailed(result.printShopNotificationFailed);
     setLastPlacedOrder(newOrder);
     setTrackedOrderId(newOrder.id);
     setCurrentScreen('confirmation');
@@ -446,6 +439,7 @@ export default function App() {
           <OrderConfirmation
             order={lastPlacedOrder}
             config={store.config}
+            printShopNotificationFailed={printShopNotificationFailed}
             onTrackOrder={(id) => {
               setTrackedOrderId(id);
               setCurrentScreen('tracker');

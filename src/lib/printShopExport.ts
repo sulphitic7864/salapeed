@@ -1,16 +1,5 @@
 import { Order, CartItem, PlantedElement } from '../types';
-import { getHoodiePhoto, PRINT_ZONES, SALAPEED_BRAND } from '../data/mockData';
-
-export interface PrintShopAttachment {
-  filename: string;
-  contentType: string;
-  content: string;
-}
-
-export interface PrintShopDispatchBundle {
-  spec: Record<string, unknown>;
-  attachments: PrintShopAttachment[];
-}
+import { getHoodiePhoto } from '../data/mockData';
 
 export interface PrintShopPackage {
   orderId: string;
@@ -106,205 +95,10 @@ export function buildPrintShopPackage(order: Order): PrintShopPackage {
   };
 }
 
-function dataUrlToAttachment(dataUrl: string, filename: string): PrintShopAttachment {
-  const match = dataUrl.match(/^data:([^;,]+)(;base64)?,([\s\S]*)$/i);
-  if (!match) throw new Error(`Could not prepare print asset: ${filename}`);
-
-  const content = match[2]
-    ? match[3]
-    : encodeUtf8(decodeURIComponent(match[3]));
-
-  return { filename, contentType: match[1], content };
-}
-
-function encodeUtf8(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let binary = '';
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return btoa(binary);
-}
-
-function safeFilePart(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]/g, '-');
-}
-
-function getSvgCanvasSize(svg: string): { width: number; height: number } {
-  const viewBox = svg.match(/\bviewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*["']/i);
-  const root = svg.match(/<svg\b([^>]*)>/i)?.[1] || '';
-  const width = Number(root.match(/\bwidth\s*=\s*["']([\d.]+)/i)?.[1]) || Number(viewBox?.[1]) || 512;
-  const height = Number(root.match(/\bheight\s*=\s*["']([\d.]+)/i)?.[1]) || Number(viewBox?.[2]) || 512;
-  const scale = Math.min(2048 / width, 2048 / height);
-  return {
-    width: Math.max(1, Math.round(width * scale)),
-    height: Math.max(1, Math.round(height * scale)),
-  };
-}
-
-async function rasterizeArtworkToPng(source: string, filename: string): Promise<PrintShopAttachment> {
-  const isSvgMarkup = /^\s*<svg\b/i.test(source);
-  const imageSource = isSvgMarkup
-    ? URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }))
-    : source;
-  const image = new Image();
-  if (!isSvgMarkup && !source.startsWith('data:') && !source.startsWith('blob:')) {
-    image.crossOrigin = 'anonymous';
-  }
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error(`Could not load artwork for ${filename}.`));
-      image.src = imageSource;
-    });
-
-    const svgSize = isSvgMarkup ? getSvgCanvasSize(source) : null;
-    const width = svgSize?.width || image.naturalWidth;
-    const height = svgSize?.height || image.naturalHeight;
-    if (!width || !height) throw new Error(`Artwork has no valid dimensions: ${filename}.`);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error(`Could not prepare PNG artwork: ${filename}.`);
-    context.drawImage(image, 0, 0, width, height);
-
-    const png = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error(`Could not encode artwork as PNG: ${filename}.`));
-      }, 'image/png');
-    });
-    const bytes = new Uint8Array(await png.arrayBuffer());
-    let binary = '';
-    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-      binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-    }
-    return { filename, contentType: 'image/png', content: btoa(binary) };
-  } finally {
-    if (isSvgMarkup) URL.revokeObjectURL(imageSource);
-  }
-}
-
-export async function buildPrintShopDispatchBundle(order: Order): Promise<PrintShopDispatchBundle> {
-  const orderPart = safeFilePart(order.id);
-  const attachments: PrintShopAttachment[] = [];
-  const garments = await Promise.all(order.items.map(async (item, itemIndex) => {
-    const itemPart = String(itemIndex + 1).padStart(2, '0');
-    const previews = {
-      front: item.designPreviews?.front || (item.designPreviewSide === 'front' ? item.designPreview : undefined),
-      back: item.designPreviews?.back || (item.designPreviewSide === 'back' ? item.designPreview : undefined),
-    };
-
-    if (!previews.front || !previews.back) {
-      throw new Error(`Item ${itemIndex + 1} is missing a saved front or back design preview.`);
-    }
-
-    const mockupFiles = {
-      front: `SALAPEED-${orderPart}-ITEM-${itemPart}-FRONT.jpg`,
-      back: `SALAPEED-${orderPart}-ITEM-${itemPart}-BACK.jpg`,
-    };
-    attachments.push(dataUrlToAttachment(previews.front, mockupFiles.front));
-    attachments.push(dataUrlToAttachment(previews.back, mockupFiles.back));
-
-    for (const [placementIndex, element] of (item.placements || []).entries()) {
-      if (element.type !== 'graphic' && element.type !== 'upload') continue;
-      const artworkSource = element.svgContent || element.printReadyUrl || element.imageUrl;
-      if (!artworkSource) {
-        throw new Error(`Artwork ${element.graphicName || placementIndex + 1} on item ${itemIndex + 1} is missing its image data.`);
-      }
-      const artworkName = safeFilePart(element.graphicName || `ARTWORK-${placementIndex + 1}`);
-      const artworkFilename = `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${artworkName}.png`;
-      attachments.push(await rasterizeArtworkToPng(artworkSource, artworkFilename));
-    }
-
-    const printPlacements = (item.placements || []).map((element, placementIndex) => {
-      const side = element.side === 'sleeve' ? 'front' : element.side;
-      const zone = PRINT_ZONES.find((candidate) => candidate.name === element.zone && candidate.side === side) ||
-        (element.side === 'sleeve' ? PRINT_ZONES.find((candidate) => candidate.id === 'front-left-sleeve') : undefined);
-      const source = element.printReadyUrl || element.imageUrl;
-      const sourceIsDataUrl = source?.startsWith('data:') || false;
-
-      const zoneBounds = zone?.boundingBox;
-
-      return {
-        side,
-        zone: zone?.name || element.zone,
-        zoneBoundsPct: zoneBounds,
-        centerInZonePct: { x: element.x, y: element.y },
-        centerOnGarmentPct: zoneBounds ? {
-          x: zoneBounds.left + (element.x / 100) * zoneBounds.width,
-          y: zoneBounds.top + (element.y / 100) * zoneBounds.height,
-        } : undefined,
-        scale: element.scale,
-        rotationDegrees: element.rotation,
-        type: element.type,
-        text: element.type === 'text' ? {
-          content: element.textContent,
-          font: element.textFont,
-          color: element.textColor,
-          curved: element.textCurve,
-        } : undefined,
-        artworkName: element.graphicName,
-        artworkSourceUrl: !element.svgContent && source && !sourceIsDataUrl
-          ? new URL(source, window.location.origin).href
-          : undefined,
-        lowResolutionUpload: element.isLowRes || undefined,
-      };
-    });
-
-    return {
-      itemIndex: itemIndex + 1,
-      productName: item.productName,
-      silhouette: item.imageType,
-      color: item.color,
-      size: item.size,
-      quantity: item.qty,
-      mockupFiles,
-      printPlacements,
-    };
-  }));
-
-  const spec = {
-    orderId: order.id,
-    createdAt: order.createdAt,
-    paymentMethod: order.paymentMethod,
-    customer: {
-      name: order.customerName,
-      phone: order.customerPhone,
-      address: order.customerAddress,
-      notes: order.customerNotes,
-    },
-    garments,
-  };
-  return { spec, attachments };
-}
-
 export async function releasePrintShopPackage(
   orderId: string,
   recipient: string,
-  email: { subject: string; bodyHtml: string; bodyText: string },
-  bundle: PrintShopDispatchBundle
-): Promise<{ id: string }> {
-  return dispatchPrintShopPackage(orderId, recipient, email, bundle, true, 'production_release');
-}
-
-export async function notifyPrintShopOfNewOrder(
-  orderId: string,
-  recipient: string,
-  email: { subject: string; bodyHtml: string; bodyText: string },
-  bundle: PrintShopDispatchBundle
-): Promise<{ id: string }> {
-  return dispatchPrintShopPackage(orderId, recipient, email, bundle, false, 'order_placed');
-}
-
-async function dispatchPrintShopPackage(
-  orderId: string,
-  recipient: string,
-  email: { subject: string; bodyHtml: string; bodyText: string },
-  bundle: PrintShopDispatchBundle,
-  bankConfirmed: boolean,
-  dispatchType: 'production_release' | 'order_placed'
+  email: { subject: string; bodyHtml: string; bodyText: string }
 ): Promise<{ id: string }> {
   const response = await fetch('/api/print-shop/dispatch', {
     method: 'POST',
@@ -313,14 +107,12 @@ async function dispatchPrintShopPackage(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      dispatchType,
       orderId,
       to: recipient,
       subject: email.subject,
       html: email.bodyHtml.replace(/src=(['\"])data:[\s\S]*?\1/gi, ''),
       text: email.bodyText,
-      bankConfirmed,
-      attachments: bundle.attachments,
+      bankConfirmed: true,
     }),
   });
   const result = await response.json().catch(() => ({}));

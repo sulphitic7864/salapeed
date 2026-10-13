@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import nodemailer from 'nodemailer';
+import sharp from 'sharp';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -439,19 +440,233 @@ app.get('/api/admin/orders', async (request, response) => {
   }
 });
 
+function safePrintFilename(value) {
+  return String(value || 'ARTWORK').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 80);
+}
+
+function decodeImageDataUrl(value, filename) {
+  const match = typeof value === 'string'
+    ? value.match(/^data:(image\/(?:jpeg|png|svg\+xml|webp));(base64),([\s\S]*)$/i)
+      || value.match(/^data:(image\/svg\+xml)(?:;charset=[^;,]+)?,([\s\S]*)$/i)
+    : null;
+  if (!match) throw new Error(`Print asset "${filename}" is not a supported embedded image.`);
+
+  const isBase64 = match.length === 4;
+  const contentType = match[1].toLowerCase();
+  const data = isBase64 ? match[3] : decodeURIComponent(match[2]);
+  const buffer = Buffer.from(data, isBase64 ? 'base64' : 'utf8');
+  if (!buffer.length || buffer.length > 20 * 1024 * 1024) {
+    throw new Error(`Print asset "${filename}" is empty or exceeds the 20 MB per-file limit.`);
+  }
+  return { buffer, contentType };
+}
+
+async function loadPrintImage(source, filename) {
+  if (typeof source !== 'string' || !source) {
+    throw new Error(`Print asset "${filename}" is missing its image data.`);
+  }
+  if (/^\s*<svg\b/i.test(source)) {
+    return { buffer: Buffer.from(source), contentType: 'image/svg+xml' };
+  }
+  if (source.startsWith('data:')) return decodeImageDataUrl(source, filename);
+
+  let assetUrl;
+  try {
+    assetUrl = new URL(source);
+  } catch {
+    throw new Error(`Print asset "${filename}" has an invalid source URL.`);
+  }
+  const { url: supabaseUrl } = getSupabaseSettings();
+  if (assetUrl.protocol !== 'https:' || assetUrl.origin !== new URL(supabaseUrl).origin) {
+    throw new Error(`Print asset "${filename}" must use embedded data or the configured Supabase storage URL.`);
+  }
+  const result = await fetch(assetUrl, { signal: AbortSignal.timeout(10000) });
+  if (!result.ok) throw new Error(`Could not download print asset "${filename}" from Supabase storage.`);
+  const contentType = (result.headers.get('content-type') || '').split(';')[0].toLowerCase();
+  if (!['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'].includes(contentType)) {
+    throw new Error(`Print asset "${filename}" is not a supported image format.`);
+  }
+  const buffer = Buffer.from(await result.arrayBuffer());
+  if (!buffer.length || buffer.length > 20 * 1024 * 1024) {
+    throw new Error(`Print asset "${filename}" is empty or exceeds the 20 MB per-file limit.`);
+  }
+  return { buffer, contentType };
+}
+
+async function buildPrintShopAttachments(order) {
+  const orderPart = safePrintFilename(order.id);
+  const attachments = [];
+  let totalBytes = 0;
+  const addAttachment = (filename, contentType, content) => {
+    totalBytes += content.length;
+    if (totalBytes > 25 * 1024 * 1024) {
+      throw new Error('The print package exceeds the 25 MB email attachment limit.');
+    }
+    attachments.push({ filename, contentType, content });
+  };
+
+  for (const [itemIndex, item] of order.items.entries()) {
+    const itemPart = String(itemIndex + 1).padStart(2, '0');
+    const front = item.designPreviews?.front
+      || (item.designPreviewSide === 'front' ? item.designPreview : undefined);
+    const back = item.designPreviews?.back
+      || (item.designPreviewSide === 'back' ? item.designPreview : undefined);
+    for (const [side, preview] of [['FRONT', front], ['BACK', back]]) {
+      if (!preview) throw new Error(`Item ${itemIndex + 1} is missing its ${side.toLowerCase()} design preview.`);
+      const image = await loadPrintImage(preview, `${side} mockup`);
+      if (!['image/jpeg', 'image/png'].includes(image.contentType)) {
+        throw new Error(`${side} mockups must be saved as JPEG or PNG images.`);
+      }
+      const mockup = await sharp(image.buffer, { limitInputPixels: 100_000_000 })
+        .resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, mozjpeg: true })
+        .toBuffer();
+      addAttachment(`SALAPEED-${orderPart}-ITEM-${itemPart}-${side}.jpg`, 'image/jpeg', mockup);
+    }
+
+    for (const [placementIndex, placement] of (item.placements || []).entries()) {
+      if (placement.type !== 'graphic' && placement.type !== 'upload') continue;
+      const name = safePrintFilename(placement.graphicName || `ARTWORK-${placementIndex + 1}`);
+      const source = placement.svgContent || placement.printReadyUrl || placement.imageUrl;
+      const image = await loadPrintImage(source, name);
+      const artwork = await sharp(image.buffer, { limitInputPixels: 100_000_000 })
+        .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      addAttachment(
+        `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${name}.png`,
+        'image/png',
+        artwork
+      );
+    }
+  }
+  if (!attachments.length) throw new Error('The print package does not contain any attachments.');
+  return attachments;
+}
+
+function validatePrintShopEmailSettings() {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const username = process.env.SMTP_USER;
+  const password = process.env.SMTP_PASS;
+  const from = process.env.PRINT_SHOP_FROM_EMAIL;
+  if (
+    !host ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535 ||
+    !from ||
+    (!!username !== !!password)
+  ) {
+    throw new Error('SMTP email is not configured correctly on the server.');
+  }
+  return { host, port, username, password, from, secure: process.env.SMTP_SECURE === 'true' || port === 465 };
+}
+
+async function sendPrintShopEmail({ to, subject, html, text, attachments, pendingPayment }) {
+  const settings = validatePrintShopEmailSettings();
+  const transporter = nodemailer.createTransport({
+    host: settings.host,
+    port: settings.port,
+    secure: settings.secure,
+    auth: settings.username ? { user: settings.username, pass: settings.password } : undefined,
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 120000,
+  });
+  try {
+    const result = await transporter.sendMail({
+      from: settings.from,
+      to,
+      subject: pendingPayment ? `[NEW ORDER — PAYMENT PENDING] ${subject}` : subject,
+      html: html.replace(/src=(['"])data:[\s\S]*?\1/gi, ''),
+      text,
+      attachments: attachments.map(({ filename, contentType, content }) => ({
+        filename,
+        content,
+        contentType,
+      })),
+    });
+    return result.messageId;
+  } catch (error) {
+    const details = [error.code, error.command].filter(Boolean).join(' during ');
+    throw new Error(
+      details ? `SMTP ${details}: ${error.message}` : `SMTP sending failed: ${error.message}`,
+      { cause: error }
+    );
+  } finally {
+    transporter.close();
+  }
+}
+
+async function getSavedOrder(orderId) {
+  const query = new URLSearchParams({ id: `eq.${orderId}`, select: '*', limit: '1' });
+  const rows = await supabaseRequest(`orders?${query}`);
+  return Array.isArray(rows) && rows[0] ? fromOrderRecord(rows[0]) : null;
+}
+
+async function getConfiguredPrintShopEmail() {
+  const rows = await supabaseRequest('admin_config?select=shop_email&limit=1');
+  const email = Array.isArray(rows) ? rows[0]?.shop_email : '';
+  if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('A valid print-shop email address is not configured.');
+  }
+  return email;
+}
+
 async function saveOrder(request, response, adminOnly) {
   if (adminOnly && !requireAdminSession(request, response)) return;
+  let record;
   try {
-    const record = toOrderRecord(request.body);
+    record = toOrderRecord(request.body);
     await supabaseRequest('orders?on_conflict=id', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(record),
     });
-    return response.json({ saved: true });
   } catch (error) {
     console.error('Supabase order write failed:', error.message);
     return response.status(error.statusCode || 400).json({ error: error.statusCode === 503 ? error.message : 'Could not save the order to Supabase.' });
+  }
+
+  if (adminOnly || !request.body?.printShopNotification) {
+    return response.json({ saved: true });
+  }
+
+  try {
+    const notification = request.body.printShopNotification;
+    if (
+      typeof notification.subject !== 'string' ||
+      notification.subject.length > 200 ||
+      typeof notification.html !== 'string' ||
+      notification.html.length > 200_000 ||
+      typeof notification.text !== 'string' ||
+      notification.text.length > 100_000
+    ) {
+      throw new Error('The print-shop email details are missing or too large.');
+    }
+    const savedOrder = await getSavedOrder(record.id);
+    if (!savedOrder || savedOrder.status !== 'Order placed') {
+      throw new Error('The order was saved, but its pending-payment notification could not be verified.');
+    }
+    const to = await getConfiguredPrintShopEmail();
+    const attachments = await buildPrintShopAttachments(savedOrder);
+    const messageId = await sendPrintShopEmail({
+      to,
+      subject: notification.subject,
+      html: notification.html,
+      text: notification.text,
+      attachments,
+      pendingPayment: true,
+    });
+    return response.json({ saved: true, notificationSent: true, notificationId: messageId });
+  } catch (error) {
+    console.error(`Print-shop order notification failed for ${record.id}:`, error);
+    return response.json({
+      saved: true,
+      notificationSent: false,
+      notificationError: error.message || 'The print-shop email could not be sent.',
+    });
   }
 }
 
@@ -529,13 +744,7 @@ app.delete('/api/admin/graphics/:id', async (request, response) => {
 });
 
 app.post('/api/print-shop/dispatch', async (request, response) => {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const username = process.env.SMTP_USER;
-  const password = process.env.SMTP_PASS;
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
   const sessionSecret = getAdminSessionSecret();
-  const from = process.env.PRINT_SHOP_FROM_EMAIL;
   const {
     dispatchType = 'production_release',
     orderId,
@@ -544,20 +753,11 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
     html,
     text,
     bankConfirmed,
-    attachments,
   } = request.body || {};
   const isOrderPlacedNotification = dispatchType === 'order_placed';
 
-  if (
-    !host ||
-    !Number.isInteger(port) ||
-    port < 1 ||
-    port > 65535 ||
-    (!isOrderPlacedNotification && !sessionSecret) ||
-    !from ||
-    (!!username !== !!password)
-  ) {
-    return response.status(503).json({ error: 'SMTP email or server-side admin authentication is not configured correctly.' });
+  if (!isOrderPlacedNotification && !sessionSecret) {
+    return response.status(503).json({ error: 'Server-side admin authentication is not configured correctly.' });
   }
   if (dispatchType !== 'production_release' && !isOrderPlacedNotification) {
     return response.status(400).json({ error: 'Invalid print-shop dispatch type.' });
@@ -576,88 +776,45 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
   if (typeof orderId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(orderId)) {
     return response.status(400).json({ error: 'Invalid order number.' });
   }
-  if (typeof to !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+  if (!isOrderPlacedNotification && (typeof to !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to))) {
     return response.status(400).json({ error: 'Enter a valid print-shop email address.' });
   }
-  if (typeof subject !== 'string' || typeof html !== 'string' || typeof text !== 'string' || !Array.isArray(attachments)) {
+  if (
+    typeof subject !== 'string' || subject.length > 200 ||
+    typeof html !== 'string' || html.length > 200_000 ||
+    typeof text !== 'string' || text.length > 100_000
+  ) {
     return response.status(400).json({ error: 'The production email package is incomplete.' });
   }
-  if (isOrderPlacedNotification) {
-    try {
-      const [orders, configs] = await Promise.all([
-        supabaseRequest(`orders?${new URLSearchParams({ id: `eq.${orderId}`, select: 'id,status', limit: '1' })}`),
-        supabaseRequest('admin_config?select=shop_email&limit=1'),
-      ]);
-      const savedOrder = Array.isArray(orders) ? orders[0] : null;
-      const configuredRecipient = Array.isArray(configs) ? configs[0]?.shop_email : '';
-      if (!savedOrder) return response.status(404).json({ error: 'The order must be saved before its notification can be sent.' });
-      if (savedOrder.status !== 'Order placed') {
-        return response.status(409).json({ error: 'Order notifications are only allowed before production release.' });
-      }
-      if (typeof configuredRecipient !== 'string' || configuredRecipient.toLowerCase() !== to.toLowerCase()) {
+  try {
+    validatePrintShopEmailSettings();
+    const order = await getSavedOrder(orderId);
+    if (!order) return response.status(404).json({ error: 'The order must be saved before its print package can be sent.' });
+    if (isOrderPlacedNotification && order.status !== 'Order placed') {
+      return response.status(409).json({ error: 'Order notifications are only allowed before production release.' });
+    }
+    if (isOrderPlacedNotification) {
+      const configuredRecipient = await getConfiguredPrintShopEmail();
+      if (typeof to === 'string' && configuredRecipient.toLowerCase() !== to.toLowerCase()) {
         return response.status(403).json({ error: 'Order notifications can only be sent to the configured print-shop email.' });
       }
-    } catch (error) {
-      console.error('Could not validate new-order print-shop notification:', error);
-      return response.status(error.statusCode || 502).json({ error: 'Could not verify the saved order or print-shop email.' });
     }
-  }
-
-  const emailAttachments = [];
-  let totalBytes = 0;
-  for (const attachment of attachments) {
-    if (
-      typeof attachment?.filename !== 'string' ||
-      typeof attachment?.contentType !== 'string' ||
-      typeof attachment?.content !== 'string' ||
-      !/^[a-zA-Z0-9_.-]{1,180}$/.test(attachment.filename) ||
-      !['image/jpeg', 'image/png'].includes(attachment.contentType) ||
-      !/^[A-Za-z0-9+/]*={0,2}$/.test(attachment.content)
-    ) {
-      return response.status(400).json({ error: 'A print attachment is invalid.' });
-    }
-    totalBytes += Buffer.byteLength(attachment.content, 'base64');
-    emailAttachments.push({
-      filename: attachment.filename,
-      content: attachment.content,
-      content_type: attachment.contentType,
-    });
-  }
-  if (!emailAttachments.length || totalBytes > 25 * 1024 * 1024) {
-    return response.status(413).json({ error: 'The print package is empty or exceeds the 25 MB email attachment limit.' });
-  }
-
-  const emailHtml = html.replace(/src=(['"])data:[\s\S]*?\1/gi, '');
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: username ? { user: username, pass: password } : undefined,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 30000,
-  });
-
-  try {
-    const result = await transporter.sendMail({
-      from,
-      to,
-      subject: isOrderPlacedNotification ? `[NEW ORDER — PAYMENT PENDING] ${subject}` : subject,
-      html: emailHtml,
+    const attachments = await buildPrintShopAttachments(order);
+    const messageId = await sendPrintShopEmail({
+      to: isOrderPlacedNotification ? await getConfiguredPrintShopEmail() : to,
+      subject,
+      html,
       text,
-      attachments: emailAttachments.map((attachment) => ({
-        filename: attachment.filename,
-        content: Buffer.from(attachment.content, 'base64'),
-        contentType: attachment.content_type,
-      })),
+      attachments,
+      pendingPayment: isOrderPlacedNotification,
     });
-
-    return response.json({ id: result.messageId });
+    return response.json({ id: messageId });
   } catch (error) {
-    console.error('SMTP print-shop dispatch failed:', error);
-    return response.status(502).json({ error: 'SMTP could not send the print package. Check the SMTP host, credentials, and sender address.' });
-  } finally {
-    transporter.close();
+    console.error('Print-shop dispatch failed:', error);
+    const statusCode = /25 MB|20 MB|missing its|supported image|invalid source|configured print-shop email|not configured correctly|must be saved/i.test(error.message)
+      ? 400
+      : error.statusCode || 502;
+    return response.status(statusCode).json({ error: error.message || 'SMTP could not send the print package.' });
   }
 });
 

@@ -45,7 +45,7 @@ import {
   FolderPlus,
   LoaderCircle,
 } from 'lucide-react';
-import { buildPrintShopDispatchBundle, downloadPrintShopElectronicFile, releasePrintShopPackage } from '../../lib/printShopExport';
+import { downloadPrintShopElectronicFile, releasePrintShopPackage } from '../../lib/printShopExport';
 import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
 
 interface AdminPortalProps {
@@ -1773,12 +1773,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 setEmailDispatchStatus('sending');
                 setEmailDispatchError(null);
                 try {
-                  const bundle = await buildPrintShopDispatchBundle(emailModalOrder);
                   const result = await releasePrintShopPackage(
                     emailModalOrder.id,
                     targetEmail,
-                    emailPkg,
-                    bundle
+                    emailPkg
                   );
                   setEmailDispatchStatus('sent');
                   onUpdateOrderStatus(

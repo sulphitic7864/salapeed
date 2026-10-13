@@ -22,6 +22,7 @@ import { getHoodiePhoto } from '../data/mockData';
 interface OrderConfirmationProps {
   order: Order;
   config: AdminConfig;
+  printShopNotificationFailed?: boolean;
   onTrackOrder: (orderId: string) => void;
   onGoHome: () => void;
 }
@@ -29,6 +30,7 @@ interface OrderConfirmationProps {
 export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
   order,
   config,
+  printShopNotificationFailed = false,
   onTrackOrder,
   onGoHome,
 }) => {
@@ -77,6 +79,12 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
           Thank you, <strong className="text-white">{order.customerName}</strong>! Your hoodie order has been received and scheduled for custom printing in Bahrain.
         </p>
       </div>
+
+      {printShopNotificationFailed && (
+        <p role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100">
+          Your order was saved, but the workshop notification could not be sent automatically. Our team will review it.
+        </p>
+      )}
 
       {/* AUTOMATED EMAIL CONFIRMATION WITH RENDERINGS CARD */}
       <div className="p-4 rounded-xl bg-gradient-to-br from-[#12161f] to-[#0d1017] border border-[#39FF14]/40 shadow-lg space-y-3 text-left">

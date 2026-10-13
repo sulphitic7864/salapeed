@@ -32,6 +32,7 @@ import {
   deleteFaqFromSupabase,
   isSupabaseConfigured,
 } from './supabase';
+import { generatePrintShopPackageEmail } from './orderEmailService';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'salapeed_products_v2',
@@ -446,7 +447,7 @@ class Store {
     customerAddress: string;
     paymentMethod: 'BenefitPay' | 'Benefit Transfer';
     notes?: string;
-  }): Promise<Order> {
+  }): Promise<{ order: Order; printShopNotificationFailed: boolean }> {
     const subtotal = this.cart.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
     const deliveryFee = this.config.deliveryFee;
     const total = subtotal + deliveryFee;
@@ -475,15 +476,26 @@ class Store {
       customerNotes: orderData.notes,
     };
 
-    const saved = await syncOrderToSupabase(newOrder);
-    if (!saved) throw new Error('We could not save your order. Please try again. Your cart is still available.');
+    const email = generatePrintShopPackageEmail(newOrder, this.config.shopEmail, false);
+    const saved = await syncOrderToSupabase(newOrder, false, {
+      subject: email.subject,
+      html: email.bodyHtml.replace(/src=(['"])data:[\s\S]*?\1/gi, ''),
+      text: email.bodyText,
+    });
+    if (!saved.saved) throw new Error('We could not save your order. Please try again. Your cart is still available.');
+    if (saved.notificationSent === false) {
+      console.error(`Print-shop order notification failed for ${newOrder.id}:`, saved.notificationError);
+    }
 
     this.orders = [newOrder, ...this.orders];
     this.save(STORAGE_KEYS.ORDERS, this.orders);
     this.clearCart();
 
     this.notify();
-    return newOrder;
+    return {
+      order: newOrder,
+      printShopNotificationFailed: saved.notificationSent === false,
+    };
   }
 
   public async getOrderById(id: string): Promise<Order | undefined> {

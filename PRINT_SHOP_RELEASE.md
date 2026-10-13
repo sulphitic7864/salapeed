@@ -1,6 +1,6 @@
 # Print Shop Email Release
 
-The admin order panel sends a production email only after the operator signs in and checks the bank-confirmation box. Admin sign-in is verified by the server, which issues an eight-hour HttpOnly session cookie. The email contains the front/back high-resolution reference mockups and a JSON placement sheet with print-zone bounds, center coordinates, and artwork sources.
+The admin order panel sends a production email only after the operator signs in and checks the bank-confirmation box. Admin sign-in is verified by the server, which issues an eight-hour HttpOnly session cookie. The email contains optimized front/back JPEG mockups and PNG artwork attachments, rebuilt by the server from the saved order.
 
 ## Configuration
 
@@ -9,6 +9,6 @@ The admin order panel sends a production email only after the operator signs in 
 3. For local development, copy the variable names from `.env.example` into `.env`. Run `npm run dev:api` and `npm run dev` in separate terminals.
 4. For deployment, run `npm run build` and start the Node server with `npm start`. The server serves `dist` when present and handles `/api/print-shop/dispatch`.
 
-The endpoint requires a valid server-issued admin session and confirmed payment, rejects malformed attachments, and limits packages to 25 MB. An order is marked sent in its history only after the SMTP server accepts the message; that confirms SMTP handoff, not final inbox delivery. SMTP does not provide an idempotency key, so avoid retrying an order when the SMTP result is uncertain.
+The endpoint requires a valid server-issued admin session and confirmed payment and limits packages to 25 MB. Customer order placement sends its formatted notification as part of the order-save API request; attachments are rebuilt server-side rather than uploaded a second time. SMTP transfers may take up to two minutes. An order is marked sent in its history only after the SMTP server accepts the message; that confirms SMTP handoff, not final inbox delivery. SMTP does not provide an idempotency key, so avoid retrying an order when the SMTP result is uncertain.
 
-Uploads are attached in their original form where available. Low-resolution uploads are identified in the placement JSON and should be reviewed before printing. Front/back mockups are captured at four times the editor's rendered pixel dimensions; the original artwork attachments, rather than mockup screenshots, are the print source.
+Front/back mockups are resized to a maximum of 2400 pixels and JPEG-compressed for email delivery. Uploaded and vector artwork is attached as PNG; the artwork files, rather than mockup screenshots, are the print source.
