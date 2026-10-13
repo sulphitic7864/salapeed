@@ -98,7 +98,8 @@ export function buildPrintShopPackage(order: Order): PrintShopPackage {
 export async function releasePrintShopPackage(
   orderId: string,
   recipient: string,
-  email: { subject: string; bodyHtml: string; bodyText: string }
+  email: { subject: string; bodyHtml: string; bodyText: string },
+  dispatchType: 'production_release' | 'order_placed' = 'production_release'
 ): Promise<{ id: string }> {
   const response = await fetch('/api/print-shop/dispatch', {
     method: 'POST',
@@ -107,12 +108,13 @@ export async function releasePrintShopPackage(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      dispatchType,
       orderId,
       to: recipient,
       subject: email.subject,
       html: email.bodyHtml.replace(/src=(['\"])data:[\s\S]*?\1/gi, ''),
       text: email.bodyText,
-      bankConfirmed: true,
+      bankConfirmed: dispatchType === 'production_release',
     }),
   });
   const result = await response.json().catch(() => ({}));
@@ -120,6 +122,14 @@ export async function releasePrintShopPackage(
     throw new Error(result.error || 'The print-shop email could not be sent.');
   }
   return result;
+}
+
+export function sendOrderPlacedPrintShopEmail(
+  order: Order,
+  recipient: string,
+  email: { subject: string; bodyHtml: string; bodyText: string }
+): Promise<{ id: string }> {
+  return releasePrintShopPackage(order.id, recipient, email, 'order_placed');
 }
 
 /**

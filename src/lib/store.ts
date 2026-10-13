@@ -33,6 +33,7 @@ import {
   isSupabaseConfigured,
 } from './supabase';
 import { generatePrintShopPackageEmail } from './orderEmailService';
+import { sendOrderPlacedPrintShopEmail } from './printShopExport';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'salapeed_products_v2',
@@ -476,15 +477,16 @@ class Store {
       customerNotes: orderData.notes,
     };
 
-    const email = generatePrintShopPackageEmail(newOrder, this.config.shopEmail, false);
-    const saved = await syncOrderToSupabase(newOrder, false, {
-      subject: email.subject,
-      html: email.bodyHtml.replace(/src=(['"])data:[\s\S]*?\1/gi, ''),
-      text: email.bodyText,
-    });
+    const saved = await syncOrderToSupabase(newOrder);
     if (!saved.saved) throw new Error('We could not save your order. Please try again. Your cart is still available.');
-    if (saved.notificationSent === false) {
-      console.error(`Print-shop order notification failed for ${newOrder.id}:`, saved.notificationError);
+
+    let printShopNotificationFailed = false;
+    try {
+      const email = generatePrintShopPackageEmail(newOrder, this.config.shopEmail, false);
+      await sendOrderPlacedPrintShopEmail(newOrder, this.config.shopEmail, email);
+    } catch (error) {
+      printShopNotificationFailed = true;
+      console.error(`Print-shop order notification failed for ${newOrder.id}:`, error);
     }
 
     this.orders = [newOrder, ...this.orders];
@@ -494,7 +496,7 @@ class Store {
     this.notify();
     return {
       order: newOrder,
-      printShopNotificationFailed: saved.notificationSent === false,
+      printShopNotificationFailed,
     };
   }
 

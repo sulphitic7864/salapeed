@@ -1,15 +1,7 @@
 import { Order, GraphicItem, Product, FaqItem, AdminConfig } from '../types';
 
-export interface PrintShopOrderNotification {
-  subject: string;
-  html: string;
-  text: string;
-}
-
 export interface OrderSyncResult {
   saved: boolean;
-  notificationSent?: boolean;
-  notificationError?: string;
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -82,17 +74,13 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T | nul
 
 export async function syncOrderToSupabase(
   order: Order,
-  adminUpdate = false,
-  printShopNotification?: PrintShopOrderNotification
+  adminUpdate = false
 ): Promise<OrderSyncResult> {
   const result = await requestJson<OrderSyncResult>(
     adminUpdate ? '/api/admin/orders' : '/api/orders',
     {
       method: 'POST',
-      body: JSON.stringify({
-        ...order,
-        ...(printShopNotification ? { printShopNotification } : {}),
-      }),
+      body: JSON.stringify(order),
     }
   );
   return result || { saved: false };

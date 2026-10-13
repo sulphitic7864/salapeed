@@ -327,7 +327,9 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
   return {
     to: shopEmail,
     from: 'Configured server sender',
-    subject: `[PRODUCTION PACKAGE] Order #${order.id} - ${order.customerName} (${order.items.reduce((a, b) => a + b.qty, 0)} Pcs)`,
+    subject: bankConfirmed
+      ? `[PRODUCTION PACKAGE] Order #${order.id} - ${order.customerName} (${order.items.reduce((a, b) => a + b.qty, 0)} Pcs)`
+      : `[NEW ORDER — PAYMENT PENDING] Order #${order.id} - ${order.customerName}`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: true,
     attachmentsCount:

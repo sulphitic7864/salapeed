@@ -629,45 +629,7 @@ async function saveOrder(request, response, adminOnly) {
     return response.status(error.statusCode || 400).json({ error: error.statusCode === 503 ? error.message : 'Could not save the order to Supabase.' });
   }
 
-  if (adminOnly || !request.body?.printShopNotification) {
-    return response.json({ saved: true });
-  }
-
-  try {
-    const notification = request.body.printShopNotification;
-    if (
-      typeof notification.subject !== 'string' ||
-      notification.subject.length > 200 ||
-      typeof notification.html !== 'string' ||
-      notification.html.length > 200_000 ||
-      typeof notification.text !== 'string' ||
-      notification.text.length > 100_000
-    ) {
-      throw new Error('The print-shop email details are missing or too large.');
-    }
-    const savedOrder = await getSavedOrder(record.id);
-    if (!savedOrder || savedOrder.status !== 'Order placed') {
-      throw new Error('The order was saved, but its pending-payment notification could not be verified.');
-    }
-    const to = await getConfiguredPrintShopEmail();
-    const attachments = await buildPrintShopAttachments(savedOrder);
-    const messageId = await sendPrintShopEmail({
-      to,
-      subject: notification.subject,
-      html: notification.html,
-      text: notification.text,
-      attachments,
-      pendingPayment: true,
-    });
-    return response.json({ saved: true, notificationSent: true, notificationId: messageId });
-  } catch (error) {
-    console.error(`Print-shop order notification failed for ${record.id}:`, error);
-    return response.json({
-      saved: true,
-      notificationSent: false,
-      notificationError: error.message || 'The print-shop email could not be sent.',
-    });
-  }
+  return response.json({ saved: true });
 }
 
 app.post('/api/orders', (request, response) => saveOrder(request, response, false));
