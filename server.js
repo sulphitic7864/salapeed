@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import nodemailer from 'nodemailer';
 import sharp from 'sharp';
+import { createClient } from '@supabase/supabase-js';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -18,6 +19,9 @@ app.use(express.json({ limit: '36mb' }));
 
 const ADMIN_SESSION_COOKIE = 'salapeed_admin_session';
 const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+const ORDER_ASSET_BUCKET = 'order-assets';
+let orderAssetAdmin;
+let orderAssetBucketInitialization;
 
 function getAdminSessionSecret() {
   return process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PRINT_SHOP_RELEASE_TOKEN || '';
@@ -138,6 +142,147 @@ function getSupabaseSettings() {
   return { url, serviceKey };
 }
 
+function getOrderAssetStorage() {
+  if (!orderAssetAdmin) {
+    const { url, serviceKey } = getSupabaseSettings();
+    orderAssetAdmin = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    }).storage.from(ORDER_ASSET_BUCKET);
+  }
+  return orderAssetAdmin;
+}
+
+async function ensureOrderAssetBucket() {
+  if (!orderAssetBucketInitialization) {
+    orderAssetBucketInitialization = (async () => {
+      const { url, serviceKey } = getSupabaseSettings();
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { error: lookupError } = await admin.storage.getBucket(ORDER_ASSET_BUCKET);
+      if (!lookupError) return;
+      if (Number(lookupError.statusCode) !== 404 && Number(lookupError.status) !== 404) {
+        throw new Error(`Could not check order asset storage: ${lookupError.message}`);
+      }
+
+      const { error: createError } = await admin.storage.createBucket(ORDER_ASSET_BUCKET, {
+        public: false,
+        fileSizeLimit: 20 * 1024 * 1024,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'],
+      });
+      if (
+        createError &&
+        Number(createError.statusCode) !== 409 &&
+        Number(createError.status) !== 409
+      ) {
+        throw new Error(`Could not create order asset storage: ${createError.message}`);
+      }
+    })().catch((error) => {
+      orderAssetBucketInitialization = undefined;
+      throw error;
+    });
+  }
+  await orderAssetBucketInitialization;
+}
+
+async function createOrderAssetSignedUrl(path, expiresIn = 60 * 60 * 24 * 7) {
+  const { data, error } = await getOrderAssetStorage().createSignedUrl(path, expiresIn);
+  if (error || !data?.signedUrl) {
+    throw new Error(`Could not create a preview link for an order design: ${error?.message || 'Unknown storage error.'}`);
+  }
+  return data.signedUrl;
+}
+
+async function signOrderAssetUrls(value) {
+  const signedUrls = new Map();
+  const visit = async (nestedValue) => {
+    if (typeof nestedValue === 'string') {
+      const match = nestedValue.match(/^storage:\/\/order-assets\/(.+)$/);
+      if (!match) return nestedValue;
+      if (!signedUrls.has(match[1])) {
+        signedUrls.set(match[1], createOrderAssetSignedUrl(match[1]));
+      }
+      return signedUrls.get(match[1]);
+    }
+    if (Array.isArray(nestedValue)) return Promise.all(nestedValue.map(visit));
+    if (nestedValue && typeof nestedValue === 'object') {
+      const entries = await Promise.all(
+        Object.entries(nestedValue).map(async ([key, value]) => [key, await visit(value)])
+      );
+      return Object.fromEntries(entries);
+    }
+    return nestedValue;
+  };
+  return visit(value);
+}
+
+function validateOrderAssetReferences(order) {
+  const expectedPath = new RegExp(`^${order.id}/asset-(?:[0-9]|[1-9][0-9])\\.(?:jpg|png|svg|webp)$`);
+  const visit = (value) => {
+    if (typeof value === 'string' && value.startsWith('storage://order-assets/')) {
+      const path = value.slice('storage://order-assets/'.length);
+      if (!expectedPath.test(path)) {
+        throw new Error('Order design files must belong to the order being saved.');
+      }
+    } else if (Array.isArray(value)) {
+      value.forEach(visit);
+    } else if (value && typeof value === 'object') {
+      Object.values(value).forEach(visit);
+    }
+  };
+  visit(order);
+}
+
+function restoreOrderAssetReferences(order) {
+  const { url: supabaseUrl } = getSupabaseSettings();
+  const storageOrigin = new URL(supabaseUrl).origin;
+  const restore = (value) => {
+    if (typeof value === 'string' && /^https:\/\//i.test(value)) {
+      try {
+        const assetUrl = new URL(value);
+        const prefix = '/storage/v1/object/sign/order-assets/';
+        if (assetUrl.origin === storageOrigin && assetUrl.pathname.startsWith(prefix)) {
+          const path = decodeURIComponent(assetUrl.pathname.slice(prefix.length));
+          const expectedPath = new RegExp(`^${order.id}/asset-(?:[0-9]|[1-9][0-9])\\.(?:jpg|png|svg|webp)$`);
+          if (expectedPath.test(path)) return `storage://order-assets/${path}`;
+        }
+      } catch {
+        return value;
+      }
+    }
+    if (Array.isArray(value)) return value.map(restore);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, restore(nested)]));
+    }
+    return value;
+  };
+  return restore(order);
+}
+
+function toOrderRecord(order) {
+  if (!order || typeof order.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(order.id) || !Array.isArray(order.items)) {
+    throw new Error('Invalid order data.');
+  }
+  order = restoreOrderAssetReferences(order);
+  validateOrderAssetReferences(order);
+  return {
+    id: order.id,
+    created_at: order.createdAt,
+    customer_name: order.customerName,
+    customer_email: order.customerEmail || null,
+    customer_phone: order.customerPhone,
+    customer_address: order.customerAddress,
+    payment_method: order.paymentMethod,
+    items: order.items,
+    subtotal: order.subtotal,
+    delivery_fee: order.deliveryFee,
+    total: order.total,
+    status: order.status,
+    status_history: order.statusHistory || [],
+    customer_notes: order.customerNotes || null,
+  };
+}
+
 async function supabaseRequest(path, options = {}) {
   const { url, serviceKey } = getSupabaseSettings();
   const response = await fetch(`${url}/rest/v1/${path}`, {
@@ -157,28 +302,6 @@ async function supabaseRequest(path, options = {}) {
   if (response.status === 204) return null;
   const body = await response.text();
   return body ? JSON.parse(body) : null;
-}
-
-function toOrderRecord(order) {
-  if (!order || typeof order.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(order.id) || !Array.isArray(order.items)) {
-    throw new Error('Invalid order data.');
-  }
-  return {
-    id: order.id,
-    created_at: order.createdAt,
-    customer_name: order.customerName,
-    customer_email: order.customerEmail || null,
-    customer_phone: order.customerPhone,
-    customer_address: order.customerAddress,
-    payment_method: order.paymentMethod,
-    items: order.items,
-    subtotal: order.subtotal,
-    delivery_fee: order.deliveryFee,
-    total: order.total,
-    status: order.status,
-    status_history: order.statusHistory || [],
-    customer_notes: order.customerNotes || null,
-  };
 }
 
 function fromOrderRecord(record) {
@@ -433,10 +556,53 @@ app.get('/api/admin/orders', async (request, response) => {
   if (!requireAdminSession(request, response)) return;
   try {
     const rows = await supabaseRequest('orders?select=*&order=created_at.desc');
-    return response.json((rows || []).map(fromOrderRecord));
+    const orders = await Promise.all((rows || []).map((row) => signOrderAssetUrls(fromOrderRecord(row))));
+    return response.json(orders);
   } catch (error) {
     console.error('Supabase orders read failed:', error.message);
     return response.status(error.statusCode || 502).json({ error: error.statusCode === 503 ? error.message : 'Could not load orders from Supabase.' });
+  }
+});
+
+app.post('/api/orders/assets/sign', async (request, response) => {
+  const { orderId, assets } = request.body || {};
+  if (typeof orderId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(orderId)) {
+    return response.status(400).json({ error: 'Invalid order number for design upload.' });
+  }
+  if (!Array.isArray(assets) || assets.length < 1 || assets.length > 100) {
+    return response.status(400).json({ error: 'The order design asset list is invalid.' });
+  }
+
+  try {
+    await ensureOrderAssetBucket();
+    const uploads = await Promise.all(assets.map(async (asset, index) => {
+      const pathMatch = typeof asset?.path === 'string'
+        ? asset.path.match(new RegExp(`^${orderId}/asset-${index}\\.(jpg|png|svg|webp)$`))
+        : null;
+      const contentTypes = {
+        jpg: 'image/jpeg',
+        png: 'image/png',
+        svg: 'image/svg+xml',
+        webp: 'image/webp',
+      };
+      if (!pathMatch || contentTypes[pathMatch[1]] !== asset.contentType) {
+        throw new Error('The order design asset metadata is invalid.');
+      }
+
+      const { data, error } = await getOrderAssetStorage().createSignedUploadUrl(asset.path, {
+        upsert: true,
+      });
+      if (error || !data?.token) {
+        throw new Error(`Could not authorize a design upload: ${error?.message || 'Missing upload token.'}`);
+      }
+      return { path: asset.path, token: data.token };
+    }));
+    return response.json({ uploads });
+  } catch (error) {
+    console.error('Order design upload authorization failed:', error);
+    return response.status(error.statusCode || 502).json({
+      error: error.message || 'Could not prepare secure storage for the order design files.',
+    });
   }
 });
 
@@ -469,6 +635,22 @@ async function loadPrintImage(source, filename) {
     return { buffer: Buffer.from(source), contentType: 'image/svg+xml' };
   }
   if (source.startsWith('data:')) return decodeImageDataUrl(source, filename);
+  const storedAsset = source.match(/^storage:\/\/order-assets\/(.+)$/);
+  if (storedAsset) {
+    const { data, error } = await getOrderAssetStorage().download(storedAsset[1]);
+    if (error || !data) {
+      throw new Error(`Could not download print asset "${filename}" from order storage.`);
+    }
+    const contentType = data.type.split(';')[0].toLowerCase();
+    const buffer = Buffer.from(await data.arrayBuffer());
+    if (!['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'].includes(contentType)) {
+      throw new Error(`Print asset "${filename}" is not a supported image format.`);
+    }
+    if (!buffer.length || buffer.length > 20 * 1024 * 1024) {
+      throw new Error(`Print asset "${filename}" is empty or exceeds the 20 MB per-file limit.`);
+    }
+    return { buffer, contentType };
+  }
 
   let assetUrl;
   try {
@@ -563,7 +745,7 @@ function validatePrintShopEmailSettings() {
   return { host, port, username, password, from, secure: process.env.SMTP_SECURE === 'true' || port === 465 };
 }
 
-async function sendPrintShopEmail({ to, subject, html, text, attachments, pendingPayment }) {
+async function sendPrintShopEmail({ to, subject, html, text, attachments }) {
   const settings = validatePrintShopEmailSettings();
   const transporter = nodemailer.createTransport({
     host: settings.host,
@@ -578,7 +760,7 @@ async function sendPrintShopEmail({ to, subject, html, text, attachments, pendin
     const result = await transporter.sendMail({
       from: settings.from,
       to,
-      subject: pendingPayment ? `[NEW ORDER — PAYMENT PENDING] ${subject}` : subject,
+      subject,
       html: html.replace(/src=(['"])data:[\s\S]*?\1/gi, ''),
       text,
       attachments: attachments.map(({ filename, contentType, content }) => ({
@@ -629,7 +811,13 @@ async function saveOrder(request, response, adminOnly) {
     return response.status(error.statusCode || 400).json({ error: error.statusCode === 503 ? error.message : 'Could not save the order to Supabase.' });
   }
 
-  return response.json({ saved: true });
+  const savedOrder = fromOrderRecord(record);
+  try {
+    return response.json({ saved: true, order: await signOrderAssetUrls(savedOrder) });
+  } catch (error) {
+    console.error(`Order ${record.id} was saved, but preview links could not be signed:`, error);
+    return response.json({ saved: true, order: savedOrder });
+  }
 }
 
 app.post('/api/orders', (request, response) => saveOrder(request, response, false));
@@ -667,7 +855,7 @@ app.get('/api/orders/track', async (request, response) => {
         return storedDigits.slice(-suffixLength) === phoneDigits.slice(-suffixLength);
       });
     if (!matchedOrder) return response.status(404).json({ error: 'Order not found.' });
-    return response.json(fromOrderRecord(matchedOrder));
+    return response.json(await signOrderAssetUrls(fromOrderRecord(matchedOrder)));
   } catch (error) {
     console.error('Supabase order tracking lookup failed:', error.message);
     return response.status(error.statusCode || 502).json({ error: 'Could not look up the order right now.' });
@@ -764,11 +952,12 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
     const attachments = await buildPrintShopAttachments(order);
     const messageId = await sendPrintShopEmail({
       to: isOrderPlacedNotification ? await getConfiguredPrintShopEmail() : to,
-      subject,
+      subject: isOrderPlacedNotification
+        ? `Order Received: #${order.id} - ${order.customerName}`
+        : subject,
       html,
       text,
       attachments,
-      pendingPayment: isOrderPlacedNotification,
     });
     return response.json({ id: messageId });
   } catch (error) {
@@ -792,6 +981,10 @@ if (isDirectExecution) {
   app.listen(port, () => {
     console.log(`Salapeed server listening on port ${port}`);
   });
+}
+
+export function handleApiRequest(request, response, next) {
+  app(request, response, next);
 }
 
 export default app;

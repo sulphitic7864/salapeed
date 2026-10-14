@@ -438,7 +438,6 @@ export default function App() {
         {currentScreen === 'confirmation' && lastPlacedOrder && (
           <OrderConfirmation
             order={lastPlacedOrder}
-            config={store.config}
             printShopNotificationFailed={printShopNotificationFailed}
             onTrackOrder={(id) => {
               setTrackedOrderId(id);

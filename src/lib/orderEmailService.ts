@@ -329,7 +329,7 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
     from: 'Configured server sender',
     subject: bankConfirmed
       ? `[PRODUCTION PACKAGE] Order #${order.id} - ${order.customerName} (${order.items.reduce((a, b) => a + b.qty, 0)} Pcs)`
-      : `[NEW ORDER — PAYMENT PENDING] Order #${order.id} - ${order.customerName}`,
+      : `Order Received: #${order.id} - ${order.customerName}`,
     sentAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     hasArtworkAttachments: true,
     attachmentsCount:

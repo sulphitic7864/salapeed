@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Order, AdminConfig } from '../types';
-import { formatBHD } from '../lib/store';
+import { Order } from '../types';
 import confetti from 'canvas-confetti';
 import {
   CheckCircle2,
@@ -10,18 +9,12 @@ import {
   ArrowRight,
   Home,
   ShieldCheck,
-  Mail,
-  Eye,
-  X,
-  FileCheck,
   Package,
 } from 'lucide-react';
-import { generateCustomerConfirmationEmail } from '../lib/orderEmailService';
 import { getHoodiePhoto } from '../data/mockData';
 
 interface OrderConfirmationProps {
   order: Order;
-  config: AdminConfig;
   printShopNotificationFailed?: boolean;
   onTrackOrder: (orderId: string) => void;
   onGoHome: () => void;
@@ -29,13 +22,10 @@ interface OrderConfirmationProps {
 
 export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
   order,
-  config,
   printShopNotificationFailed = false,
   onTrackOrder,
   onGoHome,
 }) => {
-  const [showEmailModal, setShowEmailModal] = useState(false);
-
   useEffect(() => {
     // Confetti celebration
     try {
@@ -58,8 +48,6 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
 
   const currentStageIndex = stages.findIndex((s) => s.label === order.status);
   const activeIdx = currentStageIndex === -1 ? 0 : currentStageIndex;
-
-  const emailData = generateCustomerConfirmationEmail(order);
 
   return (
     <div className="space-y-5 pb-12 text-center max-w-lg mx-auto">
@@ -85,30 +73,23 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
           Your order was saved, but the workshop notification could not be sent automatically. Our team will review it.
         </p>
       )}
-
-      {/* AUTOMATED EMAIL CONFIRMATION WITH RENDERINGS CARD */}
+      {/* Order design previews */}
       <div className="p-4 rounded-xl bg-gradient-to-br from-[#12161f] to-[#0d1017] border border-[#39FF14]/40 shadow-lg space-y-3 text-left">
         <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#39FF14]/15 border border-[#39FF14]/30 flex items-center justify-center text-[#39FF14]">
-              <Mail className="w-4 h-4" />
+              <Package className="w-4 h-4" />
             </div>
             <div>
               <div className="text-xs font-bold text-white uppercase tracking-wider">
-                Automated Confirmation Sent
+                Your Order Design
               </div>
-              {/* <div className="text-[10px] font-mono text-neutral-400">
-                To: <span className="text-[#39FF14]">{order.customerEmail || `${order.customerName.toLowerCase().replace(/\s+/g, '')}@salapeed.com`}</span>
-              </div> */}
             </div>
           </div>
-          <span className="text-[9px] font-mono font-bold bg-[#39FF14] text-black px-2 py-0.5 rounded uppercase">
-            Sent Just Now
-          </span>
         </div>
 
         <p className="text-xs text-neutral-300">
-          An automated confirmation email containing high-definition renderings of your finished hoodie design has been generated.
+          Your front and back design previews are shown below. The workshop receives the production package with artwork attachments.
         </p>
 
         {/* Hoodie Design Renderings Showcase */}
@@ -165,14 +146,6 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowEmailModal(true)}
-          className="w-full py-2.5 px-3 bg-neutral-900 hover:bg-neutral-800 text-white font-mono text-xs font-bold rounded-lg border border-neutral-700 flex items-center justify-center gap-2 transition cursor-pointer"
-        >
-          <Eye className="w-3.5 h-3.5 text-[#39FF14]" />
-          <span>View Customer Confirmation Email Package</span>
-        </button>
       </div>
 
       {/* Order Status Stepper */}
@@ -255,49 +228,6 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
         <span>You can track your order anytime using Order ID: <strong>{order.id}</strong></span>
       </div>
 
-      {/* Customer Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="w-full max-w-2xl bg-[#0d0f14] border border-neutral-700 rounded-2xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-left">
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Mail className="w-5 h-5 text-[#39FF14]" />
-                <div>
-                  <h3 className="text-sm font-bold text-white uppercase">Automated Customer Confirmation Email</h3>
-                  <div className="text-[10px] font-mono text-neutral-400">Renderings & Specifications Package</div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="p-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-3 rounded-lg bg-black/50 border border-neutral-800 text-xs font-mono space-y-1 text-neutral-300">
-              <div><strong>To:</strong> {emailData.to}</div>
-              <div><strong>From:</strong> {emailData.from}</div>
-              <div><strong>Subject:</strong> {emailData.subject}</div>
-            </div>
-
-            <div
-              className="p-4 bg-black rounded-xl border border-neutral-800 overflow-hidden"
-              dangerouslySetInnerHTML={{ __html: emailData.bodyHtml }}
-            />
-
-            <div className="flex justify-end pt-2 border-t border-neutral-800">
-              <button
-                type="button"
-                onClick={() => setShowEmailModal(false)}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
-              >
-                Close Preview
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
