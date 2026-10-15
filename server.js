@@ -167,39 +167,6 @@ async function ensureOrderAssetBucket() {
         throw new Error(`Could not check order asset storage: ${lookupError.message}`);
       }
 
-      async function ensureBenefitQrBucket() {
-        if (!benefitQrBucketInitialization) {
-          benefitQrBucketInitialization = (async () => {
-            const { url, serviceKey } = getSupabaseSettings();
-            const admin = createClient(url, serviceKey, {
-              auth: { autoRefreshToken: false, persistSession: false },
-            });
-            const { error: lookupError } = await admin.storage.getBucket(BENEFIT_QR_BUCKET);
-            if (!lookupError) return;
-            if (Number(lookupError.statusCode) !== 404 && Number(lookupError.status) !== 404) {
-              throw new Error(`Could not check BenefitPay QR storage: ${lookupError.message}`);
-            }
-
-            const { error: createError } = await admin.storage.createBucket(BENEFIT_QR_BUCKET, {
-              public: true,
-              fileSizeLimit: 2 * 1024 * 1024,
-              allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
-            });
-            if (
-              createError &&
-              Number(createError.statusCode) !== 409 &&
-              Number(createError.status) !== 409
-            ) {
-              throw new Error(`Could not create BenefitPay QR storage: ${createError.message}`);
-            }
-          })().catch((error) => {
-            benefitQrBucketInitialization = undefined;
-            throw error;
-          });
-        }
-        await benefitQrBucketInitialization;
-      }
-
       const { error: createError } = await admin.storage.createBucket(ORDER_ASSET_BUCKET, {
         public: false,
         fileSizeLimit: 20 * 1024 * 1024,
@@ -218,6 +185,39 @@ async function ensureOrderAssetBucket() {
     });
   }
   await orderAssetBucketInitialization;
+}
+
+async function ensureBenefitQrBucket() {
+  if (!benefitQrBucketInitialization) {
+    benefitQrBucketInitialization = (async () => {
+      const { url, serviceKey } = getSupabaseSettings();
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { error: lookupError } = await admin.storage.getBucket(BENEFIT_QR_BUCKET);
+      if (!lookupError) return;
+      if (Number(lookupError.statusCode) !== 404 && Number(lookupError.status) !== 404) {
+        throw new Error(`Could not check BenefitPay QR storage: ${lookupError.message}`);
+      }
+
+      const { error: createError } = await admin.storage.createBucket(BENEFIT_QR_BUCKET, {
+        public: true,
+        fileSizeLimit: 2 * 1024 * 1024,
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+      });
+      if (
+        createError &&
+        Number(createError.statusCode) !== 409 &&
+        Number(createError.status) !== 409
+      ) {
+        throw new Error(`Could not create BenefitPay QR storage: ${createError.message}`);
+      }
+    })().catch((error) => {
+      benefitQrBucketInitialization = undefined;
+      throw error;
+    });
+  }
+  await benefitQrBucketInitialization;
 }
 
 async function createOrderAssetSignedUrl(path, expiresIn = 60 * 60 * 24 * 7) {
@@ -626,7 +626,7 @@ app.post('/api/admin/benefit-qr', async (request, response) => {
   } catch (error) {
     console.error('BenefitPay QR upload failed:', error.message);
     return response.status(error.statusCode || 502).json({
-      error: error.statusCode === 503 ? error.message : 'Could not save the BenefitPay QR image to Supabase.',
+      error: error.message || 'Could not save the BenefitPay QR image to Supabase.',
     });
   }
 });

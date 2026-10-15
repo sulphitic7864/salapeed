@@ -1549,15 +1549,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* 7. SETTINGS & WORKSHOP FULFILLMENT TAB */}
       {activeTab === 'settings' && (
-        <div className="space-y-4 animate-fadeIn max-w-lg">
-          <div className="blueprint-card p-5 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-              Bahrain Fulfillment & Payment Config
-            </h3>
+        <div className="w-full max-w-6xl space-y-4 animate-fadeIn">
+          <div className="blueprint-card p-5 sm:p-6 space-y-5">
+            <div className="border-b border-neutral-800 pb-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                Bahrain Fulfillment & Payment Config
+              </h3>
+              <p className="mt-1 text-xs text-neutral-500">
+                Manage workshop contact details and customer payment instructions.
+              </p>
+            </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 text-xs">
               <div>
-                <label className="text-neutral-400 block mb-1">
+                <label className="text-neutral-400 block mb-1.5">
                   Print Shop WhatsApp Phone (with +973)
                 </label>
                 <input
@@ -1569,17 +1574,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               <div>
-                <label className="text-neutral-400 block mb-1">Print Shop Address / Seef Workshop</label>
-                <input
-                  type="text"
-                  value={config.shopAddress}
-                  onChange={(e) => onUpdateConfig({ shopAddress: e.target.value })}
-                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white"
-                />
-              </div>
-
-              <div>
-                <label className="text-neutral-400 block mb-1">Print Shop Email (order notifications)</label>
+                <label className="text-neutral-400 block mb-1.5">Print Shop Email (order notifications)</label>
                 <input
                   type="email"
                   value={config.shopEmail}
@@ -1590,7 +1585,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               <div>
-                <label className="text-neutral-400 block mb-1">BenefitPay Mobile Phone</label>
+                <label className="text-neutral-400 block mb-1.5">BenefitPay Mobile Phone</label>
                 <input
                   type="text"
                   value={config.benefitPhone}
@@ -1600,7 +1595,32 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               <div>
-                <label className="text-neutral-400 block mb-1">Official BenefitPay QR Image</label>
+                <label className="text-neutral-400 block mb-1.5">BenefitPay IBAN</label>
+                <input
+                  type="text"
+                  value={config.benefitIban}
+                  onChange={(e) => onUpdateConfig({ benefitIban: e.target.value })}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-neutral-400 block mb-1.5">Print Shop Address / Seef Workshop</label>
+                <textarea
+                  rows={3}
+                  value={config.shopAddress}
+                  onChange={(e) => onUpdateConfig({ shopAddress: e.target.value })}
+                  className="w-full resize-y px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white"
+                />
+              </div>
+
+              <div className="sm:col-span-2 rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+                <div className="mb-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">Official BenefitPay QR</h4>
+                  <p className="mt-1 text-[11px] text-neutral-500">
+                    Upload the merchant QR supplied by BenefitPay. Accepted: PNG, JPEG, or WebP up to 2 MB.
+                  </p>
+                </div>
                 <input
                   ref={benefitQrInputRef}
                   type="file"
@@ -1627,44 +1647,44 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     }
                   }}
                 />
-                {config.benefitQrUrl && (
-                  <img
-                    src={config.benefitQrUrl}
-                    alt="Configured BenefitPay merchant QR"
-                    className="mb-2 h-32 w-32 rounded-lg border border-neutral-700 bg-white object-contain p-2"
-                  />
-                )}
-                <button
-                  type="button"
-                  disabled={isUploadingBenefitQr}
-                  onClick={() => benefitQrInputRef.current?.click()}
-                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-left text-xs text-neutral-200 hover:border-[#39FF14] disabled:cursor-wait disabled:opacity-60"
-                >
-                  {isUploadingBenefitQr
-                    ? 'Uploading QR image...'
-                    : config.benefitQrUrl
-                      ? 'Replace official QR image'
-                      : 'Upload official QR image'}
-                </button>
-                <p className="mt-1 text-[10px] text-neutral-500">
-                  Upload the QR image issued by BenefitPay. PNG, JPEG, or WebP; maximum 2 MB.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-neutral-400 block mb-1">BenefitPay IBAN</label>
-                <input
-                  type="text"
-                  value={config.benefitIban}
-                  onChange={(e) => onUpdateConfig({ benefitIban: e.target.value })}
-                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white font-mono"
-                />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-700 bg-white p-2">
+                    {config.benefitQrUrl ? (
+                      <img
+                        src={config.benefitQrUrl}
+                        alt="Configured BenefitPay merchant QR"
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <div className="px-3 text-center text-[10px] font-medium text-neutral-500">
+                        No QR image uploaded
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <button
+                      type="button"
+                      disabled={isUploadingBenefitQr}
+                      onClick={() => benefitQrInputRef.current?.click()}
+                      className="w-full rounded-lg border border-[#39FF14]/40 bg-[#39FF14]/10 px-4 py-2.5 text-left text-xs font-bold text-[#39FF14] transition hover:bg-[#39FF14]/15 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {isUploadingBenefitQr
+                        ? 'Uploading QR image...'
+                        : config.benefitQrUrl
+                          ? 'Replace official QR image'
+                          : 'Upload official QR image'}
+                    </button>
+                    <p className="text-[10px] leading-relaxed text-neutral-500">
+                      Only upload the official QR image provided by your BenefitPay merchant account. Customers will see it during checkout.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => showSaveNotice('Fulfillment settings updated successfully!')}
-                className="w-full mt-2 py-2.5 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-xs uppercase rounded-lg transition cursor-pointer"
+                className="sm:col-span-2 w-full mt-1 py-3 bg-[#39FF14] hover:bg-[#32e012] text-black font-heading font-black text-xs uppercase rounded-lg transition cursor-pointer shadow-[0_0_16px_rgba(57,255,20,0.15)]"
               >
                 Save Settings
               </button>
