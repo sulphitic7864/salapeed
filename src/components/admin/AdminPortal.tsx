@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Order,
   Product,
@@ -66,6 +66,7 @@ interface AdminPortalProps {
   onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => void;
   onDeleteGraphic: (id: string) => void;
   onAddCategory: (cat: string) => void;
+  onDeleteCategory: (category: string) => void;
   onAddFaq?: (faq: Omit<FaqItem, 'id'>) => void;
   onUpdateFaq?: (id: string, patch: Partial<FaqItem>) => void;
   onDeleteFaq?: (id: string) => void;
@@ -90,6 +91,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onBulkAddGraphics,
   onDeleteGraphic,
   onAddCategory,
+  onDeleteCategory,
   onAddFaq,
   onUpdateFaq,
   onDeleteFaq,
@@ -129,6 +131,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [bulkCategory, setBulkCategory] = useState(categories[0] || 'Graphics');
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkUploadMsg, setBulkUploadMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!categories.includes(newGraphicCategory) && categories[0]) {
+      setNewGraphicCategory(categories[0]);
+    }
+    if (!categories.includes(bulkCategory) && categories[0]) {
+      setBulkCategory(categories[0]);
+    }
+  }, [categories, bulkCategory, newGraphicCategory]);
 
   // Save feedback state
   const [savedBanner, setSavedBanner] = useState<string | null>(null);
@@ -1259,15 +1270,41 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </div>
 
             <div className="flex flex-wrap gap-1.5 pt-2">
-              {categories.map((c) => (
-                <span
-                  key={c}
-                  className="px-2.5 py-1 rounded bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 font-mono flex items-center gap-1"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14]" />
-                  <span>{c}</span>
-                </span>
-              ))}
+              {categories.map((c) => {
+                const categoryGraphicCount = graphics.filter((graphic) => graphic.category === c).length;
+                return (
+                  <span
+                    key={c}
+                    className="px-2.5 py-1 rounded bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 font-mono flex items-center gap-1"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14]" />
+                    <span>{c}</span>
+                    <button
+                      type="button"
+                      aria-label={`Delete category ${c}`}
+                      title={categories.length <= 1 ? 'At least one category must remain' : `Delete category ${c}`}
+                      disabled={categories.length <= 1}
+                      onClick={() => {
+                        const replacementCategory = categories.find((category) => category !== c);
+                        if (!replacementCategory) return;
+                        const message = categoryGraphicCount > 0
+                          ? `Delete "${c}" and move its ${categoryGraphicCount} graphic${categoryGraphicCount === 1 ? '' : 's'} to "${replacementCategory}"? The graphics will not be deleted.`
+                          : `Delete the "${c}" category?`;
+                        if (!window.confirm(message)) return;
+                        onDeleteCategory(c);
+                        showSaveNotice(
+                          categoryGraphicCount > 0
+                            ? `Deleted "${c}" and moved its graphics to "${replacementCategory}".`
+                            : `Deleted category "${c}".`
+                        );
+                      }}
+                      className="ml-1 rounded p-0.5 text-neutral-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                );
+              })}
             </div>
           </div>
 

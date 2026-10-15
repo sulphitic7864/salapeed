@@ -477,6 +477,7 @@ export default function App() {
             onBulkAddGraphics={store.bulkAddGraphics}
             onDeleteGraphic={store.deleteGraphic}
             onAddCategory={store.addCategory}
+            onDeleteCategory={store.deleteCategory}
             onAddFaq={store.addFaq}
             onUpdateFaq={store.updateFaq}
             onDeleteFaq={store.deleteFaq}

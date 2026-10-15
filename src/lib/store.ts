@@ -267,7 +267,14 @@ class Store {
       this.graphics = g ? JSON.parse(g) : INITIAL_GRAPHICS;
 
       const c = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      this.categories = c ? Array.from(new Set([...INITIAL_CATEGORIES, ...JSON.parse(c)])) : INITIAL_CATEGORIES;
+      if (c) {
+        const savedCategories: unknown = JSON.parse(c);
+        this.categories = Array.isArray(savedCategories)
+          ? Array.from(new Set(savedCategories.filter((category): category is string => typeof category === 'string')))
+          : INITIAL_CATEGORIES;
+      } else {
+        this.categories = INITIAL_CATEGORIES;
+      }
 
       const ct = localStorage.getItem(STORAGE_KEYS.CART);
       this.cart = ct ? JSON.parse(ct) : [];
@@ -573,6 +580,27 @@ class Store {
     }
   }
 
+  public deleteCategory(category: string) {
+    if (!this.categories.includes(category) || this.categories.length <= 1) return;
+
+    const replacementCategory = this.categories.find((item) => item !== category);
+    if (!replacementCategory) return;
+
+    const reassignedGraphics = this.graphics.filter((graphic) => graphic.category === category);
+    this.categories = this.categories.filter((item) => item !== category);
+    this.graphics = this.graphics.map((graphic) => (
+      graphic.category === category
+        ? { ...graphic, category: replacementCategory }
+        : graphic
+    ));
+    this.save(STORAGE_KEYS.CATEGORIES, this.categories);
+    this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
+    reassignedGraphics.forEach((graphic) => (
+      syncGraphicToSupabase({ ...graphic, category: replacementCategory })
+    ));
+    this.notify();
+  }
+
   // Admin Config & Pricing
   public updateConfig(patch: Partial<AdminConfig>) {
     this.config = { ...this.config, ...patch };
@@ -684,6 +712,7 @@ export function useStore() {
     bulkAddGraphics: store.bulkAddGraphics.bind(store),
     deleteGraphic: store.deleteGraphic.bind(store),
     addCategory: store.addCategory.bind(store),
+    deleteCategory: store.deleteCategory.bind(store),
     updateConfig: store.updateConfig.bind(store),
     updateProduct: store.updateProduct.bind(store),
     addFaq: store.addFaq.bind(store),
