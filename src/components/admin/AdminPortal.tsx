@@ -44,6 +44,7 @@ import {
   Copy,
   FolderPlus,
   LoaderCircle,
+  Pencil,
 } from 'lucide-react';
 import { downloadPrintShopElectronicFile, releasePrintShopPackage } from '../../lib/printShopExport';
 import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
@@ -51,6 +52,7 @@ import { Modal } from '../Modal';
 
 type PendingDeletion =
   | { kind: 'order'; order: Order }
+  | { kind: 'graphic'; graphic: GraphicItem }
   | { kind: 'category'; category: string; graphicCount: number; replacementCategory: string };
 
 interface AdminPortalProps {
@@ -70,6 +72,7 @@ interface AdminPortalProps {
   onUpdateProduct: (id: string, patch: Partial<Product>) => void;
   onAddGraphic: (g: Omit<GraphicItem, 'id'>) => void;
   onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => void;
+  onUpdateGraphic: (id: string, patch: Partial<GraphicItem>) => Promise<void>;
   onDeleteGraphic: (id: string) => void;
   onAddCategory: (cat: string) => Promise<void>;
   onDeleteCategory: (category: string) => Promise<void>;
@@ -96,6 +99,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onUpdateProduct,
   onAddGraphic,
   onBulkAddGraphics,
+  onUpdateGraphic,
   onDeleteGraphic,
   onAddCategory,
   onDeleteCategory,
@@ -132,6 +136,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [newGraphicCategory, setNewGraphicCategory] = useState(categories[0] || 'Cars');
   const [newGraphicSvg, setNewGraphicSvg] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingGraphic, setEditingGraphic] = useState<GraphicItem | null>(null);
+  const [editGraphicName, setEditGraphicName] = useState('');
+  const [editGraphicCategory, setEditGraphicCategory] = useState('');
+  const [editGraphicSvg, setEditGraphicSvg] = useState('');
+  const [editGraphicArtwork, setEditGraphicArtwork] = useState<{ svgContent?: string; previewUrl?: string } | null>(null);
+  const [isSavingGraphic, setIsSavingGraphic] = useState(false);
 
   // Bulk Upload state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -178,6 +188,68 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setTimeout(() => setSavedBanner(null), 3500);
   };
 
+  const openGraphicEditor = (graphic: GraphicItem) => {
+    setEditingGraphic(graphic);
+    setEditGraphicName(graphic.name);
+    setEditGraphicCategory(graphic.category);
+    setEditGraphicSvg(graphic.svgContent || '');
+    setEditGraphicArtwork(null);
+  };
+
+  const handleEditGraphicFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+        const svgContent = await file.text();
+        if (!svgContent.trim().startsWith('<svg')) throw new Error('Please choose a valid SVG file.');
+        setEditGraphicSvg(svgContent);
+        setEditGraphicArtwork({ svgContent, previewUrl: undefined });
+        return;
+      }
+      if (!file.type.startsWith('image/')) throw new Error('Please choose an image or SVG file.');
+
+      const previewUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string'
+          ? resolve(reader.result)
+          : reject(new Error('Could not read the selected artwork.'));
+        reader.onerror = () => reject(new Error('Could not read the selected artwork.'));
+        reader.readAsDataURL(file);
+      });
+      setEditGraphicArtwork({ previewUrl, svgContent: undefined });
+    } catch (error) {
+      showSaveNotice(error instanceof Error ? error.message : 'Could not load the selected artwork.');
+    }
+  };
+
+  const handleSaveGraphic = async () => {
+    if (!editingGraphic) return;
+    const name = editGraphicName.trim();
+    const category = editGraphicCategory.trim();
+    if (!name || !category) {
+      showSaveNotice('Enter a name and choose a category.');
+      return;
+    }
+    if (!editGraphicArtwork && editingGraphic.svgContent && !editGraphicSvg.trim()) {
+      showSaveNotice('SVG artwork cannot be empty.');
+      return;
+    }
+
+    setIsSavingGraphic(true);
+    try {
+      const artworkPatch = editGraphicArtwork || (
+        editingGraphic.svgContent ? { svgContent: editGraphicSvg.trim() } : {}
+      );
+      await onUpdateGraphic(editingGraphic.id, { name, category, ...artworkPatch });
+      setEditingGraphic(null);
+      showSaveNotice(`Updated "${name}".`);
+    } catch (error) {
+      showSaveNotice(error instanceof Error ? error.message : 'Could not update the graphic.');
+    } finally {
+      setIsSavingGraphic(false);
+    }
+  };
+
   const handleConfirmDeletion = async () => {
     if (!pendingDeletion) return;
     const deletion = pendingDeletion;
@@ -187,7 +259,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         setDeletingOrderId(deletion.order.id);
         await onDeleteOrder(deletion.order.id);
         showSaveNotice(`Order #${deletion.order.id} was deleted.`);
-      } else {
+      } else if (deletion.kind === 'category') {
         setDeletingCategory(deletion.category);
         await onDeleteCategory(deletion.category);
         showSaveNotice(
@@ -195,6 +267,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             ? `Deleted "${deletion.category}" and moved its graphics to "${deletion.replacementCategory}".`
             : `Deleted category "${deletion.category}".`
         );
+      } else {
+        onDeleteGraphic(deletion.graphic.id);
+        showSaveNotice(`Deleted graphic "${deletion.graphic.name}".`);
       }
       setPendingDeletion(null);
     } catch (error) {
@@ -203,7 +278,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           ? error.message
           : deletion.kind === 'order'
             ? 'Could not delete the order.'
-            : 'Could not delete the category.'
+            : deletion.kind === 'category'
+              ? 'Could not delete the category.'
+              : 'Could not delete the graphic.'
       );
     } finally {
       if (deletion.kind === 'order') setDeletingOrderId(null);
@@ -421,7 +498,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       <Modal
         isOpen={pendingDeletion !== null}
-        title={pendingDeletion?.kind === 'order' ? 'Delete Order' : 'Delete Category'}
+        title={
+          pendingDeletion?.kind === 'order'
+            ? 'Delete Order'
+            : pendingDeletion?.kind === 'category'
+              ? 'Delete Category'
+              : 'Delete Artwork'
+        }
         onClose={() => setPendingDeletion(null)}
         closeDisabled={deletingOrderId !== null || deletingCategory !== null}
         footer={
@@ -452,7 +535,92 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           ? `Delete order #${pendingDeletion.order.id}?`
           : pendingDeletion?.kind === 'category'
             ? `Delete "${pendingDeletion.category}"?${pendingDeletion.graphicCount > 0 ? ` Its graphics will move to "${pendingDeletion.replacementCategory}".` : ''}`
-            : null}
+            : pendingDeletion?.kind === 'graphic'
+              ? `Delete "${pendingDeletion.graphic.name}"?`
+              : null}
+      </Modal>
+
+      <Modal
+        isOpen={editingGraphic !== null}
+        title="Edit Artwork"
+        onClose={() => setEditingGraphic(null)}
+        closeDisabled={isSavingGraphic}
+        maxWidthClassName="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setEditingGraphic(null)}
+              disabled={isSavingGraphic}
+              className="rounded-lg border border-neutral-700 px-3.5 py-2 text-xs font-bold text-neutral-300 transition hover:bg-neutral-800 hover:text-white disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveGraphic}
+              disabled={isSavingGraphic || !editGraphicName.trim() || !editGraphicCategory}
+              className="inline-flex items-center gap-2 rounded-lg bg-[#39FF14] px-3.5 py-2 text-xs font-bold text-black transition hover:bg-[#32e012] disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSavingGraphic && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
+              {isSavingGraphic ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold text-neutral-300">Name</span>
+            <input
+              value={editGraphicName}
+              onChange={(event) => setEditGraphicName(event.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-[#39FF14] focus:outline-none"
+              maxLength={120}
+              autoFocus
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold text-neutral-300">Category</span>
+            <select
+              value={editGraphicCategory}
+              onChange={(event) => setEditGraphicCategory(event.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-[#39FF14] focus:outline-none"
+            >
+              {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+          </label>
+          {editingGraphic?.svgContent && !editGraphicArtwork?.previewUrl && (
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-neutral-300">SVG Artwork</span>
+              <textarea
+                value={editGraphicSvg}
+                onChange={(event) => {
+                  setEditGraphicSvg(event.target.value);
+                  setEditGraphicArtwork({ svgContent: event.target.value, previewUrl: undefined });
+                }}
+                rows={7}
+                className="w-full resize-y rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 font-mono text-xs text-white focus:border-[#39FF14] focus:outline-none"
+              />
+            </label>
+          )}
+          <label className="block space-y-1.5">
+            <span className="text-xs font-bold text-neutral-300">Replace Artwork (optional)</span>
+            <input
+              type="file"
+              accept="image/*,.svg"
+              onChange={(event) => {
+                void handleEditGraphicFile(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+              className="block w-full text-xs text-neutral-400 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-800 file:px-3 file:py-2 file:font-bold file:text-white hover:file:bg-neutral-700"
+            />
+            {editGraphicArtwork && (
+              <p className="text-[11px] text-[#39FF14]">
+                {editGraphicArtwork.svgContent ? 'New SVG selected.' : 'New image selected.'}
+              </p>
+            )}
+          </label>
+        </div>
       </Modal>
 
       {/* Top Admin Header */}
@@ -1432,16 +1600,28 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <span className="text-[9px] text-neutral-500 font-mono">
                       {g.isCustomAdmin ? 'custom' : 'brochure'}
                     </span>
-                    <button
-                      onClick={() => {
-                        onDeleteGraphic(g.id);
-                        showSaveNotice(`Deleted graphic "${g.name}"`);
-                      }}
-                      className="text-neutral-500 hover:text-red-400 p-1 cursor-pointer"
-                      title="Delete graphic"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => openGraphicEditor(g)}
+                        className="rounded p-1 text-neutral-500 transition hover:text-[#39FF14]"
+                        title="Edit graphic"
+                        aria-label={`Edit graphic ${g.name}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingDeletion({ kind: 'graphic', graphic: g });
+                        }}
+                        className="rounded p-1 text-neutral-500 transition hover:text-red-400"
+                        title="Delete graphic"
+                        aria-label={`Delete graphic ${g.name}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

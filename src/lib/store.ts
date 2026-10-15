@@ -584,6 +584,20 @@ class Store {
     return created;
   }
 
+  public async updateGraphic(id: string, patch: Partial<GraphicItem>) {
+    const current = this.graphics.find((graphic) => graphic.id === id);
+    if (!current) throw new Error('Could not find this graphic to update.');
+
+    const updated = { ...current, ...patch };
+    if (isSupabaseConfigured && !await syncGraphicToSupabase(updated)) {
+      throw new Error('Could not save this graphic to Supabase. Check your admin session and try again.');
+    }
+
+    this.graphics = this.graphics.map((graphic) => graphic.id === id ? updated : graphic);
+    this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
+    this.notify();
+  }
+
   public deleteGraphic(id: string) {
     this.graphics = this.graphics.filter((g) => g.id !== id);
     this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
@@ -755,6 +769,7 @@ export function useStore() {
     updateOrderStatus: store.updateOrderStatus.bind(store),
     addGraphic: store.addGraphic.bind(store),
     bulkAddGraphics: store.bulkAddGraphics.bind(store),
+    updateGraphic: store.updateGraphic.bind(store),
     deleteGraphic: store.deleteGraphic.bind(store),
     addCategory: store.addCategory.bind(store),
     deleteCategory: store.deleteCategory.bind(store),
