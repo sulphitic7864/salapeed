@@ -47,6 +47,11 @@ import {
 } from 'lucide-react';
 import { downloadPrintShopElectronicFile, releasePrintShopPackage } from '../../lib/printShopExport';
 import { generatePrintShopPackageEmail } from '../../lib/orderEmailService';
+import { Modal } from '../Modal';
+
+type PendingDeletion =
+  | { kind: 'order'; order: Order }
+  | { kind: 'category'; category: string; graphicCount: number; replacementCategory: string };
 
 interface AdminPortalProps {
   isAdmin: boolean;
@@ -159,6 +164,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilter, setOrderFilter] = useState<string>('All');
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
 
   // Custom Color and Size input state per product
   const [customSizeInput, setCustomSizeInput] = useState<Record<string, string>>({});
@@ -169,6 +176,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const showSaveNotice = (msg: string) => {
     setSavedBanner(msg);
     setTimeout(() => setSavedBanner(null), 3500);
+  };
+
+  const handleConfirmDeletion = async () => {
+    if (!pendingDeletion) return;
+    const deletion = pendingDeletion;
+
+    try {
+      if (deletion.kind === 'order') {
+        setDeletingOrderId(deletion.order.id);
+        await onDeleteOrder(deletion.order.id);
+        showSaveNotice(`Order #${deletion.order.id} was deleted.`);
+      } else {
+        setDeletingCategory(deletion.category);
+        await onDeleteCategory(deletion.category);
+        showSaveNotice(
+          deletion.graphicCount > 0
+            ? `Deleted "${deletion.category}" and moved its graphics to "${deletion.replacementCategory}".`
+            : `Deleted category "${deletion.category}".`
+        );
+      }
+      setPendingDeletion(null);
+    } catch (error) {
+      showSaveNotice(
+        error instanceof Error
+          ? error.message
+          : deletion.kind === 'order'
+            ? 'Could not delete the order.'
+            : 'Could not delete the category.'
+      );
+    } finally {
+      if (deletion.kind === 'order') setDeletingOrderId(null);
+      else setDeletingCategory(null);
+    }
   };
 
   // Handle Bulk Image Upload (up to 50+ images at once)
@@ -378,6 +418,42 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           <span>{savedBanner}</span>
         </div>
       )}
+
+      <Modal
+        isOpen={pendingDeletion !== null}
+        title={pendingDeletion?.kind === 'order' ? 'Delete Order' : 'Delete Category'}
+        onClose={() => setPendingDeletion(null)}
+        closeDisabled={deletingOrderId !== null || deletingCategory !== null}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setPendingDeletion(null)}
+              disabled={deletingOrderId !== null || deletingCategory !== null}
+              className="rounded-lg border border-neutral-700 px-3.5 py-2 text-xs font-bold text-neutral-300 transition hover:bg-neutral-800 hover:text-white disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDeletion}
+              disabled={deletingOrderId !== null || deletingCategory !== null}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-red-400 disabled:cursor-wait disabled:opacity-60"
+            >
+              {(deletingOrderId !== null || deletingCategory !== null) && (
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              )}
+              {deletingOrderId !== null || deletingCategory !== null ? 'Deleting...' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        {pendingDeletion?.kind === 'order'
+          ? `Delete order #${pendingDeletion.order.id}?`
+          : pendingDeletion?.kind === 'category'
+            ? `Delete "${pendingDeletion.category}"?${pendingDeletion.graphicCount > 0 ? ` Its graphics will move to "${pendingDeletion.replacementCategory}".` : ''}`
+            : null}
+      </Modal>
 
       {/* Top Admin Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-800 pb-4">
@@ -618,22 +694,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       aria-label={`Delete order ${o.id}`}
                       title="Permanently delete order"
                       disabled={deletingOrderId === o.id}
-                      onClick={async () => {
-                        const confirmed = window.confirm(
-                          `Permanently delete order #${o.id} for ${o.customerName}? This removes the order record from Supabase and cannot be undone.`
-                        );
-                        if (!confirmed) return;
-
-                        setDeletingOrderId(o.id);
-                        try {
-                          await onDeleteOrder(o.id);
-                          showSaveNotice(`Order #${o.id} was permanently deleted.`);
-                        } catch (error) {
-                          showSaveNotice(error instanceof Error ? error.message : 'Could not delete the order.');
-                        } finally {
-                          setDeletingOrderId(null);
-                        }
-                      }}
+                      onClick={() => setPendingDeletion({ kind: 'order', order: o })}
                       className="inline-flex items-center gap-1 rounded border border-red-500/40 px-2 py-1 text-xs font-bold text-red-400 transition hover:bg-red-500/10 disabled:cursor-wait disabled:opacity-50"
                     >
                       {deletingOrderId === o.id
@@ -1321,25 +1382,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       type="button"
                       aria-label={`Delete category ${c}`}
                       title={categories.length <= 1 ? 'At least one category must remain' : `Delete category ${c}`}
-                      disabled={categories.length <= 1}
-                      onClick={async () => {
+                      onClick={() => {
                         const replacementCategory = categories.find((category) => category !== c);
                         if (!replacementCategory) return;
-                        const message = categoryGraphicCount > 0
-                          ? `Delete "${c}" and move its ${categoryGraphicCount} graphic${categoryGraphicCount === 1 ? '' : 's'} to "${replacementCategory}"? The graphics will not be deleted.`
-                          : `Delete the "${c}" category?`;
-                        if (!window.confirm(message)) return;
-                        try {
-                          await onDeleteCategory(c);
-                          showSaveNotice(
-                            categoryGraphicCount > 0
-                              ? `Deleted "${c}" and moved its graphics to "${replacementCategory}".`
-                              : `Deleted category "${c}".`
-                          );
-                        } catch (error) {
-                          showSaveNotice(error instanceof Error ? error.message : 'Could not delete the category.');
-                        }
+                        setPendingDeletion({
+                          kind: 'category',
+                          category: c,
+                          graphicCount: categoryGraphicCount,
+                          replacementCategory,
+                        });
                       }}
+                      disabled={categories.length <= 1 || deletingCategory === c}
                       className="ml-1 rounded p-0.5 text-neutral-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Trash2 className="h-3 w-3" />
