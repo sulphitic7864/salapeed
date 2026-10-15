@@ -65,8 +65,8 @@ interface AdminPortalProps {
   onAddGraphic: (g: Omit<GraphicItem, 'id'>) => void;
   onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => void;
   onDeleteGraphic: (id: string) => void;
-  onAddCategory: (cat: string) => void;
-  onDeleteCategory: (category: string) => void;
+  onAddCategory: (cat: string) => Promise<void>;
+  onDeleteCategory: (category: string) => Promise<void>;
   onAddFaq?: (faq: Omit<FaqItem, 'id'>) => void;
   onUpdateFaq?: (id: string, patch: Partial<FaqItem>) => void;
   onDeleteFaq?: (id: string) => void;
@@ -1256,11 +1256,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-white focus:outline-none focus:border-[#39FF14]"
               />
               <button
-                onClick={() => {
-                  if (newCategoryName.trim()) {
-                    onAddCategory(newCategoryName.trim());
-                    showSaveNotice(`Category "${newCategoryName.trim()}" created!`);
+                onClick={async () => {
+                  const category = newCategoryName.trim();
+                  if (!category) return;
+                  try {
+                    await onAddCategory(category);
+                    showSaveNotice(`Category "${category}" saved to Supabase.`);
                     setNewCategoryName('');
+                  } catch (error) {
+                    showSaveNotice(error instanceof Error ? error.message : 'Could not save the category.');
                   }
                 }}
                 className="px-4 py-2 bg-neutral-800 hover:bg-[#39FF14] text-white hover:text-black rounded-lg text-xs font-bold transition cursor-pointer"
@@ -1284,19 +1288,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       aria-label={`Delete category ${c}`}
                       title={categories.length <= 1 ? 'At least one category must remain' : `Delete category ${c}`}
                       disabled={categories.length <= 1}
-                      onClick={() => {
+                      onClick={async () => {
                         const replacementCategory = categories.find((category) => category !== c);
                         if (!replacementCategory) return;
                         const message = categoryGraphicCount > 0
                           ? `Delete "${c}" and move its ${categoryGraphicCount} graphic${categoryGraphicCount === 1 ? '' : 's'} to "${replacementCategory}"? The graphics will not be deleted.`
                           : `Delete the "${c}" category?`;
                         if (!window.confirm(message)) return;
-                        onDeleteCategory(c);
-                        showSaveNotice(
-                          categoryGraphicCount > 0
-                            ? `Deleted "${c}" and moved its graphics to "${replacementCategory}".`
-                            : `Deleted category "${c}".`
-                        );
+                        try {
+                          await onDeleteCategory(c);
+                          showSaveNotice(
+                            categoryGraphicCount > 0
+                              ? `Deleted "${c}" and moved its graphics to "${replacementCategory}".`
+                              : `Deleted category "${c}".`
+                          );
+                        } catch (error) {
+                          showSaveNotice(error instanceof Error ? error.message : 'Could not delete the category.');
+                        }
                       }}
                       className="ml-1 rounded p-0.5 text-neutral-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                     >

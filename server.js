@@ -552,6 +552,87 @@ app.get('/api/graphics', async (_request, response) => {
   }
 });
 
+app.get('/api/graphic-categories', async (_request, response) => {
+  try {
+    const rows = await supabaseRequest('graphic_categories?select=name&order=name.asc');
+    return response.json((rows || []).map((row) => row.name));
+  } catch (error) {
+    console.error('Supabase graphic categories read failed:', error.message);
+    return response.status(error.statusCode || 502).json({
+      error: error.statusCode === 503 ? error.message : 'Could not load graphic categories from Supabase.',
+    });
+  }
+});
+
+app.post('/api/admin/graphic-categories', async (request, response) => {
+  if (!requireAdminSession(request, response)) return;
+  const { categories } = request.body || {};
+  if (
+    !Array.isArray(categories) ||
+    categories.length > 30 ||
+    categories.some((category) => (
+      typeof category !== 'string' ||
+      !category.trim() ||
+      category.trim().length > 100
+    ))
+  ) {
+    return response.status(400).json({ error: 'Provide up to 30 valid graphic categories.' });
+  }
+
+  const records = Array.from(new Set(categories.map((category) => category.trim())))
+    .map((name) => ({ name }));
+  if (!records.length) return response.json({ saved: true });
+
+  try {
+    await supabaseRequest('graphic_categories?on_conflict=name', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(records),
+    });
+    return response.json({ saved: true });
+  } catch (error) {
+    console.error('Supabase graphic categories write failed:', error.message);
+    return response.status(error.statusCode || 502).json({
+      error: error.statusCode === 503 ? error.message : 'Could not save graphic categories to Supabase.',
+    });
+  }
+});
+
+app.delete('/api/admin/graphic-categories/:name', async (request, response) => {
+  if (!requireAdminSession(request, response)) return;
+  const category = request.params.name.trim();
+  const replacementCategory = typeof request.body?.replacementCategory === 'string'
+    ? request.body.replacementCategory.trim()
+    : '';
+  if (!category || category.length > 100 || !replacementCategory || replacementCategory.length > 100 || replacementCategory === category) {
+    return response.status(400).json({ error: 'A valid replacement category is required.' });
+  }
+
+  try {
+    const categoryQuery = new URLSearchParams({ name: `eq.${replacementCategory}`, select: 'name', limit: '1' });
+    const replacementRows = await supabaseRequest(`graphic_categories?${categoryQuery}`);
+    if (!Array.isArray(replacementRows) || !replacementRows.length) {
+      return response.status(400).json({ error: 'The replacement category does not exist.' });
+    }
+
+    const graphicQuery = new URLSearchParams({ category: `eq.${category}` });
+    await supabaseRequest(`graphics?${graphicQuery}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ category: replacementCategory }),
+    });
+
+    const deleteQuery = new URLSearchParams({ name: `eq.${category}` });
+    await supabaseRequest(`graphic_categories?${deleteQuery}`, { method: 'DELETE' });
+    return response.json({ deleted: true });
+  } catch (error) {
+    console.error('Supabase graphic category delete failed:', error.message);
+    return response.status(error.statusCode || 502).json({
+      error: error.statusCode === 503 ? error.message : 'Could not delete the graphic category from Supabase.',
+    });
+  }
+});
+
 app.get('/api/admin/orders', async (request, response) => {
   if (!requireAdminSession(request, response)) return;
   try {

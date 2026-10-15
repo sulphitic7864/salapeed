@@ -21,11 +21,14 @@ import {
   fetchOrdersFromSupabase,
   fetchTrackedOrderFromSupabase,
   fetchGraphicsFromSupabase,
+  fetchGraphicCategoriesFromSupabase,
   fetchProductsFromSupabase,
   fetchFaqsFromSupabase,
   fetchAdminConfigFromSupabase,
   syncGraphicToSupabase,
+  syncGraphicCategoriesToSupabase,
   deleteGraphicFromSupabase,
+  deleteGraphicCategoryFromSupabase,
   syncProductToSupabase,
   syncAdminConfigToSupabase,
   syncFaqToSupabase,
@@ -294,7 +297,10 @@ class Store {
         fetch('/api/admin/session', { credentials: 'same-origin' })
           .then(async (response) => {
             this.isAdminLoggedIn = response.ok;
-            if (response.ok) await this.loadRemoteOrders();
+            if (response.ok) {
+              await this.loadRemoteOrders();
+              await this.syncCategoriesAfterAdminLogin();
+            }
             if (!response.ok) localStorage.removeItem(STORAGE_KEYS.ADMIN_AUTH);
             this.notify();
           })
@@ -305,11 +311,12 @@ class Store {
       }
 
       if (isSupabaseConfigured) {
-        const [remoteProducts, remoteGraphics, remoteFaqs, remoteConfig] = await Promise.all([
+        const [remoteProducts, remoteGraphics, remoteFaqs, remoteConfig, remoteCategories] = await Promise.all([
           fetchProductsFromSupabase(),
           fetchGraphicsFromSupabase(),
           fetchFaqsFromSupabase(),
           fetchAdminConfigFromSupabase(),
+          fetchGraphicCategoriesFromSupabase(),
         ]);
 
         if (remoteProducts) {
@@ -329,6 +336,11 @@ class Store {
         if (remoteGraphics) {
           this.graphics = this.mergeById(this.graphics, remoteGraphics);
           this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
+        }
+
+        if (remoteCategories?.length) {
+          this.categories = Array.from(new Set(remoteCategories));
+          this.save(STORAGE_KEYS.CATEGORIES, this.categories);
         }
 
         if (remoteFaqs && remoteFaqs.length > 0) {
@@ -571,22 +583,27 @@ class Store {
     this.notify();
   }
 
-  public addCategory(cat: string) {
+  public async addCategory(cat: string) {
     const trimmed = cat.trim();
-    if (trimmed && !this.categories.includes(trimmed)) {
-      this.categories = [...this.categories, trimmed];
-      this.save(STORAGE_KEYS.CATEGORIES, this.categories);
-      this.notify();
+    if (!trimmed || this.categories.includes(trimmed)) return;
+    if (isSupabaseConfigured && !await syncGraphicCategoriesToSupabase([trimmed])) {
+      throw new Error('Could not save this category to Supabase. Check your admin session and try again.');
     }
+    this.categories = [...this.categories, trimmed];
+    this.save(STORAGE_KEYS.CATEGORIES, this.categories);
+    this.notify();
   }
 
-  public deleteCategory(category: string) {
+  public async deleteCategory(category: string) {
     if (!this.categories.includes(category) || this.categories.length <= 1) return;
 
     const replacementCategory = this.categories.find((item) => item !== category);
     if (!replacementCategory) return;
 
-    const reassignedGraphics = this.graphics.filter((graphic) => graphic.category === category);
+    if (isSupabaseConfigured && !await deleteGraphicCategoryFromSupabase(category, replacementCategory)) {
+      throw new Error('Could not delete this category from Supabase. Check your admin session and try again.');
+    }
+
     this.categories = this.categories.filter((item) => item !== category);
     this.graphics = this.graphics.map((graphic) => (
       graphic.category === category
@@ -595,10 +612,28 @@ class Store {
     ));
     this.save(STORAGE_KEYS.CATEGORIES, this.categories);
     this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
-    reassignedGraphics.forEach((graphic) => (
-      syncGraphicToSupabase({ ...graphic, category: replacementCategory })
-    ));
     this.notify();
+  }
+
+  private async syncCategoriesAfterAdminLogin() {
+    if (!isSupabaseConfigured) return;
+    const remoteCategories = await fetchGraphicCategoriesFromSupabase();
+    if (remoteCategories === null) return;
+
+    if (remoteCategories.length === 0 && this.categories.length > 0) {
+      const saved = await syncGraphicCategoriesToSupabase(this.categories);
+      if (!saved) {
+        console.error('Could not initialize graphic categories in Supabase.');
+        return;
+      }
+    }
+
+    const updatedCategories = await fetchGraphicCategoriesFromSupabase();
+    if (updatedCategories !== null) {
+      this.categories = Array.from(new Set(updatedCategories));
+      this.save(STORAGE_KEYS.CATEGORIES, this.categories);
+      this.notify();
+    }
   }
 
   // Admin Config & Pricing
@@ -667,6 +702,7 @@ class Store {
       this.isAdminLoggedIn = true;
       localStorage.setItem(STORAGE_KEYS.ADMIN_AUTH, 'true');
       await this.loadRemoteOrders();
+      await this.syncCategoriesAfterAdminLogin();
       this.notify();
       return true;
     } catch {

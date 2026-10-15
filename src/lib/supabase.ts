@@ -236,6 +236,10 @@ export async function fetchGraphicsFromSupabase(): Promise<GraphicItem[] | null>
   return requestJson<GraphicItem[]>('/api/graphics');
 }
 
+export async function fetchGraphicCategoriesFromSupabase(): Promise<string[] | null> {
+  return requestJson<string[]>('/api/graphic-categories');
+}
+
 export async function fetchProductsFromSupabase(): Promise<Product[] | null> {
   return requestJson<Product[]>('/api/products');
 }
@@ -254,6 +258,28 @@ export async function syncGraphicToSupabase(graphic: GraphicItem): Promise<boole
     { method: 'POST', body: JSON.stringify(graphic) }
   );
   return result?.saved === true;
+}
+
+export async function syncGraphicCategoriesToSupabase(categories: string[]): Promise<boolean> {
+  const result = await requestJson<{ saved: boolean }>(
+    '/api/admin/graphic-categories',
+    { method: 'POST', body: JSON.stringify({ categories }) }
+  );
+  return result?.saved === true;
+}
+
+export async function deleteGraphicCategoryFromSupabase(
+  category: string,
+  replacementCategory: string
+): Promise<boolean> {
+  const result = await requestJson<{ deleted: boolean }>(
+    `/api/admin/graphic-categories/${encodeURIComponent(category)}`,
+    {
+      method: 'DELETE',
+      body: JSON.stringify({ replacementCategory }),
+    }
+  );
+  return result?.deleted === true;
 }
 
 export async function syncProductToSupabase(product: Product): Promise<boolean> {
