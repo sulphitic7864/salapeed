@@ -25,6 +25,7 @@ import {
   fetchProductsFromSupabase,
   fetchFaqsFromSupabase,
   fetchAdminConfigFromSupabase,
+  deleteOrderFromSupabase,
   syncGraphicToSupabase,
   syncGraphicCategoriesToSupabase,
   deleteGraphicFromSupabase,
@@ -527,6 +528,13 @@ class Store {
     return (await fetchTrackedOrderFromSupabase(id)) || undefined;
   }
 
+  public async deleteOrder(orderId: string) {
+    await deleteOrderFromSupabase(orderId);
+    this.orders = this.orders.filter((order) => order.id !== orderId);
+    this.save(STORAGE_KEYS.ORDERS, this.orders);
+    this.notify();
+  }
+
   public updateOrderStatus(orderId: string, status: OrderStatus, note?: string) {
     this.orders = this.orders.map((o) => {
       if (o.id === orderId) {
@@ -743,6 +751,7 @@ export function useStore() {
     clearCart: store.clearCart.bind(store),
     createOrder: store.createOrder.bind(store),
     getOrderById: store.getOrderById.bind(store),
+    deleteOrder: store.deleteOrder.bind(store),
     updateOrderStatus: store.updateOrderStatus.bind(store),
     addGraphic: store.addGraphic.bind(store),
     bulkAddGraphics: store.bulkAddGraphics.bind(store),

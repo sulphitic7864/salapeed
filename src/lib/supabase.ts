@@ -228,6 +228,24 @@ export async function fetchOrdersFromSupabase(): Promise<Order[] | null> {
   return requestJson<Order[]>('/api/admin/orders');
 }
 
+export async function deleteOrderFromSupabase(id: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+  } catch (error) {
+    console.error('Order deletion request could not be completed:', error);
+    throw new Error('Could not contact the server to delete this order.');
+  }
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || 'Could not delete this order.');
+  }
+}
+
 export async function fetchTrackedOrderFromSupabase(lookup: string): Promise<Order | null> {
   return requestJson<Order>(`/api/orders/track?lookup=${encodeURIComponent(lookup)}`);
 }

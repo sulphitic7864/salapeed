@@ -60,6 +60,7 @@ interface AdminPortalProps {
   config: AdminConfig;
   faqs?: FaqItem[];
   onUpdateOrderStatus: (orderId: string, status: OrderStatus, note?: string) => void;
+  onDeleteOrder: (orderId: string) => Promise<void>;
   onUpdateConfig: (patch: Partial<AdminConfig>) => void;
   onUpdateProduct: (id: string, patch: Partial<Product>) => void;
   onAddGraphic: (g: Omit<GraphicItem, 'id'>) => void;
@@ -85,6 +86,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   config,
   faqs = [],
   onUpdateOrderStatus,
+  onDeleteOrder,
   onUpdateConfig,
   onUpdateProduct,
   onAddGraphic,
@@ -156,6 +158,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Orders search
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilter, setOrderFilter] = useState<string>('All');
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   // Custom Color and Size input state per product
   const [customSizeInput, setCustomSizeInput] = useState<Record<string, string>>({});
@@ -596,6 +599,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-neutral-400">Status:</span>
                     <select
+                      disabled={deletingOrderId === o.id}
                       value={o.status}
                       onChange={(e) => {
                         const newSt = e.target.value as OrderStatus;
@@ -609,6 +613,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <option value="Ready for delivery / pickup">Ready for delivery / pickup</option>
                       <option value="Delivered">Delivered</option>
                     </select>
+                    <button
+                      type="button"
+                      aria-label={`Delete order ${o.id}`}
+                      title="Permanently delete order"
+                      disabled={deletingOrderId === o.id}
+                      onClick={async () => {
+                        const confirmed = window.confirm(
+                          `Permanently delete order #${o.id} for ${o.customerName}? This removes the order record from Supabase and cannot be undone.`
+                        );
+                        if (!confirmed) return;
+
+                        setDeletingOrderId(o.id);
+                        try {
+                          await onDeleteOrder(o.id);
+                          showSaveNotice(`Order #${o.id} was permanently deleted.`);
+                        } catch (error) {
+                          showSaveNotice(error instanceof Error ? error.message : 'Could not delete the order.');
+                        } finally {
+                          setDeletingOrderId(null);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded border border-red-500/40 px-2 py-1 text-xs font-bold text-red-400 transition hover:bg-red-500/10 disabled:cursor-wait disabled:opacity-50"
+                    >
+                      {deletingOrderId === o.id
+                        ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                        : <Trash2 className="h-3.5 w-3.5" />}
+                      <span>{deletingOrderId === o.id ? 'Deleting...' : 'Delete'}</span>
+                    </button>
                   </div>
                 </div>
 

@@ -474,6 +474,7 @@ export default function App() {
             config={store.config}
             faqs={store.faqs}
             onUpdateOrderStatus={store.updateOrderStatus}
+            onDeleteOrder={store.deleteOrder}
             onUpdateConfig={store.updateConfig}
             onUpdateProduct={store.updateProduct}
             onAddGraphic={store.addGraphic}

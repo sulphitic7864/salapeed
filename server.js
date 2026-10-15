@@ -734,6 +734,33 @@ app.get('/api/admin/orders', async (request, response) => {
   }
 });
 
+app.delete('/api/admin/orders/:id', async (request, response) => {
+  if (!requireAdminSession(request, response)) return;
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(request.params.id)) {
+    return response.status(400).json({ error: 'Invalid order number.' });
+  }
+
+  try {
+    const query = new URLSearchParams({
+      id: `eq.${request.params.id}`,
+      select: 'id',
+    });
+    const deletedRows = await supabaseRequest(`orders?${query}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=representation' },
+    });
+    if (!Array.isArray(deletedRows) || !deletedRows.length) {
+      return response.status(404).json({ error: 'Order not found.' });
+    }
+    return response.json({ deleted: true });
+  } catch (error) {
+    console.error(`Supabase order deletion failed for ${request.params.id}:`, error.message);
+    return response.status(error.statusCode || 502).json({
+      error: error.statusCode === 503 ? error.message : 'Could not delete the order from Supabase.',
+    });
+  }
+});
+
 app.post('/api/orders/assets/sign', async (request, response) => {
   const { orderId, assets } = request.body || {};
   if (typeof orderId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(orderId)) {
