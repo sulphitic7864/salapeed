@@ -284,6 +284,7 @@ export default function App() {
           <HomeView
             products={store.products}
             graphics={store.graphics}
+            shopPhone={store.config.shopPhone}
             onStartCustomizing={handleStartCustomizing}
             onBrowseCatalogue={() => setCurrentScreen('catalogue')}
             onOpenTracker={() => setCurrentScreen('tracker')}
@@ -297,6 +298,7 @@ export default function App() {
         {currentScreen === 'catalogue' && (
           <ProductCatalogue
             products={store.products}
+            shopPhone={store.config.shopPhone}
             onSelectProduct={handleSelectProduct}
             onBack={() => setCurrentScreen('home')}
             onCustomizeDirect={(product, color) => {
@@ -313,6 +315,7 @@ export default function App() {
         {currentScreen === 'product-detail' && (
           <ProductDetail
             product={activeProduct}
+            shopPhone={store.config.shopPhone}
             selectedColor={selectedColor}
             selectedSize={selectedSize}
             onSelectColor={setSelectedColor}

@@ -26,6 +26,7 @@ import { getHoodiePhoto, SALAPEED_BRAND, COLOR_OPTIONS } from '../data/mockData'
 interface HomeViewProps {
   products: Product[];
   graphics: GraphicItem[];
+  shopPhone: string;
   onStartCustomizing: (product?: Product, color?: string) => void;
   onBrowseCatalogue: () => void;
   onOpenTracker: () => void;
@@ -37,6 +38,7 @@ interface HomeViewProps {
 export const HomeView: React.FC<HomeViewProps> = ({
   products,
   graphics,
+  shopPhone,
   onStartCustomizing,
   onBrowseCatalogue,
   onOpenTracker,
@@ -89,11 +91,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         <div className="flex items-center gap-3">
           <a
-            href={`tel:${SALAPEED_BRAND.phone.replace(/[^0-9+]/g, '')}`}
+            href={`tel:${shopPhone.replace(/[^0-9+]/g, '')}`}
             className="flex items-center gap-1.5 text-neutral-300 hover:text-white font-bold transition"
           >
             <Phone className="w-3.5 h-3.5 text-[#39FF14]" />
-            <span>{SALAPEED_BRAND.phone}</span>
+            <span>{shopPhone}</span>
           </a>
           <a
             href={SALAPEED_BRAND.instagramUrl}

@@ -21,6 +21,7 @@ import {
 
 interface ProductCatalogueProps {
   products: Product[];
+  shopPhone: string;
   onSelectProduct: (product: Product) => void;
   onCustomizeDirect?: (product: Product, color: string) => void;
   onBack?: () => void;
@@ -28,6 +29,7 @@ interface ProductCatalogueProps {
 
 export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
   products,
+  shopPhone,
   onSelectProduct,
   onCustomizeDirect,
   onBack,
@@ -37,6 +39,7 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
   const [displayLimit, setDisplayLimit] = useState(6);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const shopPhoneDigits = shopPhone.replace(/\D/g, '');
 
   // Sorted products as strictly required:
   // 1. Kids Hoodie
@@ -140,13 +143,13 @@ export const ProductCatalogue: React.FC<ProductCatalogueProps> = ({
           {/* Contact Links */}
           <div className="flex items-center gap-3 text-xs font-mono">
             <a
-              href={SALAPEED_BRAND.whatsappUrl}
+              href={`https://wa.me/${shopPhoneDigits}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-green-400 hover:text-green-300 font-bold transition"
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              <span>{SALAPEED_BRAND.phone}</span>
+              <span>{shopPhone}</span>
             </a>
             <a
               href={SALAPEED_BRAND.instagramUrl}

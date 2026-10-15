@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
+import { COLOR_OPTIONS, getHoodiePhoto } from '../data/mockData';
 import { formatBHD } from '../lib/store';
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import {
 
 interface ProductDetailProps {
   product: Product;
+  shopPhone: string;
   selectedColor: string;
   selectedSize: string;
   onSelectColor: (color: string) => void;
@@ -30,6 +31,7 @@ interface ProductDetailProps {
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({
   product,
+  shopPhone,
   selectedColor,
   selectedSize,
   onSelectColor,
@@ -356,11 +358,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
               <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 pt-1">
                 <span>Fulfilled by Salapeed Workshop Bahrain</span>
                 <a
-                  href={`tel:${SALAPEED_BRAND.phone.replace(/[^0-9+]/g, '')}`}
+                  href={`tel:${shopPhone.replace(/[^0-9+]/g, '')}`}
                   className="text-neutral-300 hover:text-white flex items-center gap-1 hover:underline"
                 >
                   <Phone className="w-3 h-3 text-[#39FF14]" />
-                  <span>Call: {SALAPEED_BRAND.phone}</span>
+                  <span>Call: {shopPhone}</span>
                 </a>
               </div>
             </div>
