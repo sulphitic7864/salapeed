@@ -540,7 +540,7 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
           title="Salapeed Official Brand Crest (Fixed Placement)"
         >
           <img
-            src="/logo-new.jpeg"
+            src="/logo-new.png"
             alt="Salapeed Brand Crest"
             className="w-10 h-10 sm:w-15 sm:h-15 object-contain"
             referrerPolicy="no-referrer"

@@ -78,9 +78,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Official Salapeed Brand Ribbon */}
       <div className="p-3 bg-gradient-to-r from-[#14171f] via-[#0f1116] to-[#14171f] rounded-xl border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
         <div className="flex items-center gap-2">
-          <div className="h-6 px-1.5 rounded-md bg-black border border-[#39FF14]/60 flex items-center justify-center shadow-sm">
-            <img src="/logo-new.jpeg" alt="Salapeed" className="h-4 w-auto object-contain" />
-          </div>
           <span className="font-heading font-black text-white text-sm tracking-wide">
             Salapeed
           </span>

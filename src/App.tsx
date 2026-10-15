@@ -199,7 +199,7 @@ export default function App() {
           >
             <div className="flex items-center justify-center px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-black border-2 border-[#39FF14] shadow-[0_0_14px_rgba(57,255,20,0.35)] transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_0_22px_rgba(57,255,20,0.55)]">
               <img
-                src="/logo-new.jpeg"
+                src="/logo-new.png"
                 alt="Salapeed"
                 className="h-6 sm:h-7.5 w-auto max-w-[145px] sm:max-w-[165px] object-contain"
               />
