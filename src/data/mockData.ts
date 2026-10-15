@@ -543,6 +543,7 @@ export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
   shopEmail: 'orders@salapeed.com',
   benefitIban: 'BH29 BBME 0000 0012 3456 78',
   benefitPhone: '+973 3661 8183',
+  benefitQrUrl: '',
   website: 'www.salapeed.com',
   instagram: '@salapeed',
   sloganEn: 'Print . Stitch . Deliver',

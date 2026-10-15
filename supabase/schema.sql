@@ -72,12 +72,16 @@ create table if not exists public.admin_config (
   shop_email text not null default '',
   benefit_iban text not null default '',
   benefit_phone text not null default '',
+  benefit_qr_url text,
   website text,
   instagram text,
   slogan_en text,
   brand_name_en text,
   updated_at timestamptz not null default now()
 );
+
+alter table public.admin_config
+  add column if not exists benefit_qr_url text;
 
 create table if not exists public.admin_users (
   user_id uuid primary key references auth.users(id) on delete cascade,

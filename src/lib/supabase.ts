@@ -298,6 +298,29 @@ export async function syncAdminConfigToSupabase(config: AdminConfig): Promise<bo
   return result?.saved === true;
 }
 
+export async function uploadBenefitQrImage(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Could not read the BenefitPay QR image.'));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.onerror = () => reject(new Error('Could not read the BenefitPay QR image.'));
+    reader.readAsDataURL(file);
+  });
+  const result = await requestJson<{ url: string }>('/api/admin/benefit-qr', {
+    method: 'POST',
+    body: JSON.stringify({ dataUrl }),
+  });
+  if (!result?.url) {
+    throw new Error('Could not save the BenefitPay QR image. Check the admin session and Supabase configuration.');
+  }
+  return result.url;
+}
+
 export async function syncFaqToSupabase(faq: FaqItem): Promise<boolean> {
   const result = await requestJson<{ saved: boolean }>(
     '/api/admin/faqs',

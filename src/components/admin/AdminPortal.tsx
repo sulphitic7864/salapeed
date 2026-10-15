@@ -9,7 +9,7 @@ import {
 } from '../../types';
 import { formatBHD } from '../../lib/store';
 import { COLOR_OPTIONS, getHoodiePhoto } from '../../data/mockData';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { isSupabaseConfigured, uploadBenefitQrImage } from '../../lib/supabase';
 import {
   LayoutDashboard,
   Package,
@@ -128,9 +128,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   // Bulk Upload state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const benefitQrInputRef = useRef<HTMLInputElement | null>(null);
   const [bulkCategory, setBulkCategory] = useState(categories[0] || 'Graphics');
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkUploadMsg, setBulkUploadMsg] = useState<string | null>(null);
+  const [isUploadingBenefitQr, setIsUploadingBenefitQr] = useState(false);
 
   useEffect(() => {
     if (!categories.includes(newGraphicCategory) && categories[0]) {
@@ -1563,6 +1565,58 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   onChange={(e) => onUpdateConfig({ benefitPhone: e.target.value })}
                   className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-white font-mono"
                 />
+              </div>
+
+              <div>
+                <label className="text-neutral-400 block mb-1">Official BenefitPay QR Image</label>
+                <input
+                  ref={benefitQrInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) {
+                      showSaveNotice('QR image must be 2 MB or smaller.');
+                      return;
+                    }
+
+                    setIsUploadingBenefitQr(true);
+                    try {
+                      const url = await uploadBenefitQrImage(file);
+                      onUpdateConfig({ benefitQrUrl: url });
+                      showSaveNotice('Official BenefitPay QR saved to Supabase.');
+                    } catch (error) {
+                      showSaveNotice(error instanceof Error ? error.message : 'Could not upload the QR image.');
+                    } finally {
+                      setIsUploadingBenefitQr(false);
+                    }
+                  }}
+                />
+                {config.benefitQrUrl && (
+                  <img
+                    src={config.benefitQrUrl}
+                    alt="Configured BenefitPay merchant QR"
+                    className="mb-2 h-32 w-32 rounded-lg border border-neutral-700 bg-white object-contain p-2"
+                  />
+                )}
+                <button
+                  type="button"
+                  disabled={isUploadingBenefitQr}
+                  onClick={() => benefitQrInputRef.current?.click()}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-left text-xs text-neutral-200 hover:border-[#39FF14] disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isUploadingBenefitQr
+                    ? 'Uploading QR image...'
+                    : config.benefitQrUrl
+                      ? 'Replace official QR image'
+                      : 'Upload official QR image'}
+                </button>
+                <p className="mt-1 text-[10px] text-neutral-500">
+                  Upload the QR image issued by BenefitPay. PNG, JPEG, or WebP; maximum 2 MB.
+                </p>
               </div>
 
               <div>

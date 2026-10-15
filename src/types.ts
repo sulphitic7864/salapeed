@@ -136,6 +136,7 @@ export interface AdminConfig {
   shopEmail: string;
   benefitIban: string;
   benefitPhone: string;
+  benefitQrUrl?: string;
   website?: string;
   instagram?: string;
   sloganEn?: string;

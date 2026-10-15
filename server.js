@@ -20,8 +20,10 @@ app.use(express.json({ limit: '36mb' }));
 const ADMIN_SESSION_COOKIE = 'salapeed_admin_session';
 const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 const ORDER_ASSET_BUCKET = 'order-assets';
+const BENEFIT_QR_BUCKET = 'benefit-payment-qr';
 let orderAssetAdmin;
 let orderAssetBucketInitialization;
+let benefitQrBucketInitialization;
 
 function getAdminSessionSecret() {
   return process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PRINT_SHOP_RELEASE_TOKEN || '';
@@ -163,6 +165,39 @@ async function ensureOrderAssetBucket() {
       if (!lookupError) return;
       if (Number(lookupError.statusCode) !== 404 && Number(lookupError.status) !== 404) {
         throw new Error(`Could not check order asset storage: ${lookupError.message}`);
+      }
+
+      async function ensureBenefitQrBucket() {
+        if (!benefitQrBucketInitialization) {
+          benefitQrBucketInitialization = (async () => {
+            const { url, serviceKey } = getSupabaseSettings();
+            const admin = createClient(url, serviceKey, {
+              auth: { autoRefreshToken: false, persistSession: false },
+            });
+            const { error: lookupError } = await admin.storage.getBucket(BENEFIT_QR_BUCKET);
+            if (!lookupError) return;
+            if (Number(lookupError.statusCode) !== 404 && Number(lookupError.status) !== 404) {
+              throw new Error(`Could not check BenefitPay QR storage: ${lookupError.message}`);
+            }
+
+            const { error: createError } = await admin.storage.createBucket(BENEFIT_QR_BUCKET, {
+              public: true,
+              fileSizeLimit: 2 * 1024 * 1024,
+              allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+            });
+            if (
+              createError &&
+              Number(createError.statusCode) !== 409 &&
+              Number(createError.status) !== 409
+            ) {
+              throw new Error(`Could not create BenefitPay QR storage: ${createError.message}`);
+            }
+          })().catch((error) => {
+            benefitQrBucketInitialization = undefined;
+            throw error;
+          });
+        }
+        await benefitQrBucketInitialization;
       }
 
       const { error: createError } = await admin.storage.createBucket(ORDER_ASSET_BUCKET, {
@@ -421,6 +456,7 @@ function toAdminConfigRecord(config) {
     shop_email: config.shopEmail || '',
     benefit_iban: config.benefitIban || '',
     benefit_phone: config.benefitPhone || '',
+    benefit_qr_url: config.benefitQrUrl || null,
     website: config.website || null,
     instagram: config.instagram || null,
     slogan_en: config.sloganEn || null,
@@ -437,6 +473,7 @@ function fromAdminConfigRecord(record) {
     shopEmail: record.shop_email || '',
     benefitIban: record.benefit_iban || '',
     benefitPhone: record.benefit_phone || '',
+    benefitQrUrl: record.benefit_qr_url || '',
     website: record.website || undefined,
     instagram: record.instagram || undefined,
     sloganEn: record.slogan_en || undefined,
@@ -516,7 +553,16 @@ app.get('/api/admin/config', async (request, response) => {
     const rows = await supabaseRequest('admin_config?select=*&limit=1');
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row) {
-      const fallback = { printFee: 0, deliveryFee: 0, shopPhone: '', shopAddress: '', shopEmail: '', benefitIban: '', benefitPhone: '' };
+      const fallback = {
+        printFee: 0,
+        deliveryFee: 0,
+        shopPhone: '',
+        shopAddress: '',
+        shopEmail: '',
+        benefitIban: '',
+        benefitPhone: '',
+        benefitQrUrl: '',
+      };
       return response.json(fallback);
     }
     return response.json(fromAdminConfigRecord(row));
@@ -539,6 +585,49 @@ app.post('/api/admin/config', async (request, response) => {
   } catch (error) {
     console.error('Supabase admin config write failed:', error.message);
     return response.status(error.statusCode || 400).json({ error: error.statusCode === 503 ? error.message : 'Could not save admin config to Supabase.' });
+  }
+});
+
+app.post('/api/admin/benefit-qr', async (request, response) => {
+  if (!requireAdminSession(request, response)) return;
+
+  const dataUrl = request.body?.dataUrl;
+  const match = typeof dataUrl === 'string'
+    ? dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/)
+    : null;
+  if (!match || match[2].length > Math.ceil((2 * 1024 * 1024) / 3) * 4) {
+    return response.status(400).json({ error: 'Upload a PNG, JPEG, or WebP QR image no larger than 2 MB.' });
+  }
+
+  const contentType = match[1];
+  const image = Buffer.from(match[2], 'base64');
+  if (!image.length || image.length > 2 * 1024 * 1024) {
+    return response.status(400).json({ error: 'Upload a QR image no larger than 2 MB.' });
+  }
+
+  try {
+    await ensureBenefitQrBucket();
+    const { url, serviceKey } = getSupabaseSettings();
+    const admin = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { error: uploadError } = await admin.storage
+      .from(BENEFIT_QR_BUCKET)
+      .upload('benefitpay/merchant-qr', image, { contentType, upsert: true });
+    if (uploadError) throw new Error(`Could not upload BenefitPay QR image: ${uploadError.message}`);
+
+    const { data } = admin.storage.from(BENEFIT_QR_BUCKET).getPublicUrl('benefitpay/merchant-qr');
+    await supabaseRequest('admin_config?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ id: 'main', benefit_qr_url: data.publicUrl }),
+    });
+    return response.json({ url: data.publicUrl });
+  } catch (error) {
+    console.error('BenefitPay QR upload failed:', error.message);
+    return response.status(error.statusCode || 502).json({
+      error: error.statusCode === 503 ? error.message : 'Could not save the BenefitPay QR image to Supabase.',
+    });
   }
 });
 

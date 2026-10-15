@@ -246,7 +246,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   className="w-full mt-2 py-2 px-3 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-[#39FF14] text-xs font-bold border border-[#39FF14]/40 flex items-center justify-center gap-2 cursor-pointer transition"
                 >
                   <QrCode className="w-4 h-4" />
-                  <span>Display Official BenefitPay QR Code</span>
+                  <span>{config.benefitQrUrl ? 'Display BenefitPay QR Code' : 'Show BenefitPay Transfer Details'}</span>
                 </button>
               </div>
             </div>
@@ -308,29 +308,25 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
               </button>
             </div>
 
-            {/* Mock QR Code Graphic */}
-            <div className="w-48 h-48 mx-auto bg-white p-3 rounded-xl flex flex-col items-center justify-center shadow-lg">
-              <div className="w-full h-full border-4 border-black p-2 flex flex-col items-center justify-center space-y-1">
-                <div className="text-xs font-black tracking-widest text-black">BENEFITPAY</div>
-                <div className="grid grid-cols-4 gap-1 p-2 bg-neutral-100 rounded">
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-neutral-300" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-black" />
-                  <div className="w-4 h-4 bg-neutral-300" />
-                  <div className="w-4 h-4 bg-black" />
-                </div>
-                <div className="text-[10px] font-mono text-black font-bold">SALAPEED.COM</div>
+            {config.benefitQrUrl ? (
+              <img
+                src={config.benefitQrUrl}
+                alt="Official BenefitPay merchant QR code"
+                className="w-48 h-48 mx-auto rounded-xl bg-white p-2 object-contain shadow-lg"
+              />
+            ) : (
+              <div className="mx-auto max-w-xs rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs text-amber-100">
+                The official BenefitPay QR has not been uploaded yet. Use the phone number or IBAN below to transfer.
               </div>
-            </div>
+            )}
 
             <div className="space-y-1 text-xs">
               <div className="text-white font-bold">Number: {config.benefitPhone}</div>
               <div className="text-neutral-400 text-[11px] font-mono">{config.benefitIban}</div>
               <div className="text-[11px] text-[#39FF14] pt-1">
-                Scan via BenefitPay app or transfer using registered mobile number.
+                {config.benefitQrUrl
+                  ? 'Scan this official QR in the BenefitPay app.'
+                  : 'Transfer using the registered mobile number or IBAN.'}
               </div>
             </div>
 
