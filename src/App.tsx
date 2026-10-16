@@ -64,7 +64,6 @@ export default function App() {
 
   // Last confirmed order
   const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null);
-  const [printShopNotificationFailed, setPrintShopNotificationFailed] = useState(false);
   const [trackedOrderId, setTrackedOrderId] = useState<string>('');
 
   // Cart count
@@ -173,7 +172,6 @@ export default function App() {
     });
 
     const newOrder = result.order;
-    setPrintShopNotificationFailed(result.printShopNotificationFailed);
     setLastPlacedOrder(newOrder);
     setTrackedOrderId(newOrder.id);
     setCurrentScreen('confirmation');
@@ -441,7 +439,6 @@ export default function App() {
         {currentScreen === 'confirmation' && lastPlacedOrder && (
           <OrderConfirmation
             order={lastPlacedOrder}
-            printShopNotificationFailed={printShopNotificationFailed}
             onTrackOrder={(id) => {
               setTrackedOrderId(id);
               setCurrentScreen('tracker');

@@ -949,8 +949,8 @@ async function sendPrintShopEmail({ to, subject, html, text, attachments }) {
     port: settings.port,
     secure: settings.secure,
     auth: settings.username ? { user: settings.username, pass: settings.password } : undefined,
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
     socketTimeout: 120000,
   });
   try {
@@ -1140,15 +1140,17 @@ app.post('/api/print-shop/dispatch', async (request, response) => {
     if (isOrderPlacedNotification && order.status !== 'Order placed') {
       return response.status(409).json({ error: 'Order notifications are only allowed before production release.' });
     }
+    let notificationRecipient = to;
     if (isOrderPlacedNotification) {
       const configuredRecipient = await getConfiguredPrintShopEmail();
       if (typeof to === 'string' && configuredRecipient.toLowerCase() !== to.toLowerCase()) {
         return response.status(403).json({ error: 'Order notifications can only be sent to the configured print-shop email.' });
       }
+      notificationRecipient = configuredRecipient;
     }
     const attachments = await buildPrintShopAttachments(order);
     const messageId = await sendPrintShopEmail({
-      to: isOrderPlacedNotification ? await getConfiguredPrintShopEmail() : to,
+      to: notificationRecipient,
       subject: isOrderPlacedNotification
         ? `Order Received: #${order.id} - ${order.customerName}`
         : subject,

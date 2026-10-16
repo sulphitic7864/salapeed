@@ -470,7 +470,6 @@ class Store {
     notes?: string;
   }): Promise<{
     order: Order;
-    printShopNotificationFailed: boolean;
   }> {
     const subtotal = this.cart.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
     const deliveryFee = this.config.deliveryFee;
@@ -504,24 +503,21 @@ class Store {
     if (!saved.saved) throw new Error('We could not save your order. Please try again. Your cart is still available.');
     const persistedOrder = saved.order || newOrder;
 
-    let printShopNotificationFailed = false;
-    try {
-      const email = generatePrintShopPackageEmail(persistedOrder, this.config.shopEmail, false);
-      await sendOrderPlacedPrintShopEmail(persistedOrder, this.config.shopEmail, email);
-    } catch (error) {
-      printShopNotificationFailed = true;
-      console.error(`Print-shop order notification failed for ${newOrder.id}:`, error);
-    }
-
     this.orders = [persistedOrder, ...this.orders];
     this.save(STORAGE_KEYS.ORDERS, this.orders);
     this.clearCart();
-
     this.notify();
-    return {
-      order: persistedOrder,
-      printShopNotificationFailed,
-    };
+
+    window.setTimeout(() => {
+      void Promise.resolve().then(() => {
+        const email = generatePrintShopPackageEmail(persistedOrder, this.config.shopEmail, false);
+        return sendOrderPlacedPrintShopEmail(persistedOrder, this.config.shopEmail, email);
+      }).catch((error) => {
+        console.error(`Print-shop order notification failed for ${newOrder.id}:`, error);
+      });
+    }, 0);
+
+    return { order: persistedOrder };
   }
 
   public async getOrderById(id: string): Promise<Order | undefined> {

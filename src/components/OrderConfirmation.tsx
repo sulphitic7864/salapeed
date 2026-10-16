@@ -15,14 +15,12 @@ import { getHoodiePhoto } from '../data/mockData';
 
 interface OrderConfirmationProps {
   order: Order;
-  printShopNotificationFailed?: boolean;
   onTrackOrder: (orderId: string) => void;
   onGoHome: () => void;
 }
 
 export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
   order,
-  printShopNotificationFailed = false,
   onTrackOrder,
   onGoHome,
 }) => {
@@ -68,11 +66,6 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
         </p>
       </div>
 
-      {printShopNotificationFailed && (
-        <p role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100">
-          Your order was saved, but the workshop notification could not be sent automatically. Our team will review it.
-        </p>
-      )}
       {/* Order design previews */}
       <div className="p-4 rounded-xl bg-gradient-to-br from-[#12161f] to-[#0d1017] border border-[#39FF14]/40 shadow-lg space-y-3 text-left">
         <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
