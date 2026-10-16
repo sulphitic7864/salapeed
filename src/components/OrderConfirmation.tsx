@@ -82,7 +82,7 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
         </div>
 
         <p className="text-xs text-neutral-300">
-          Your front and back design previews are shown below. The workshop receives the production package with artwork attachments.
+          Your front and back design previews are shown below.
         </p>
 
         {/* Hoodie Design Renderings Showcase */}
