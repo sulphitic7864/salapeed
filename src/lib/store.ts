@@ -247,7 +247,7 @@ class Store {
   private async loadState() {
     try {
       const p = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      if (p) {
+      if (!isSupabaseConfigured && p) {
         const parsed: Product[] = JSON.parse(p);
         // Guarantee Kids Hoodies are always first, followed by Adults Pullover and Zipper
         this.products = INITIAL_PRODUCTS.map((init) => {
@@ -322,16 +322,22 @@ class Store {
         ]);
 
         if (remoteProducts) {
-          this.products = this.mergeById(this.products, remoteProducts).map((product) => {
-            const bundledProduct = INITIAL_PRODUCTS.find((initial) => initial.id === product.id);
-            return bundledProduct
-              ? {
-                  ...product,
-                  photoUrl: bundledProduct.photoUrl,
-                  colorPhotos: bundledProduct.colorPhotos,
-                }
-              : product;
-          });
+          const productOrder = new Map(INITIAL_PRODUCTS.map((product, index) => [product.id, index]));
+          this.products = remoteProducts
+            .map((product) => {
+              const bundledProduct = INITIAL_PRODUCTS.find((initial) => initial.id === product.id);
+              return bundledProduct
+                ? {
+                    ...product,
+                    photoUrl: bundledProduct.photoUrl,
+                    colorPhotos: bundledProduct.colorPhotos,
+                  }
+                : product;
+            })
+            .sort((a, b) => (
+              (productOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+              (productOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+            ));
           this.save(STORAGE_KEYS.PRODUCTS, this.products);
         }
 
@@ -679,16 +685,17 @@ class Store {
     this.notify();
   }
 
-  public updateProduct(productId: string, patch: Partial<Product>) {
-    this.products = this.products.map((p) => {
-      if (p.id === productId) {
-        return { ...p, ...patch };
-      }
-      return p;
-    });
+  public async updateProduct(productId: string, patch: Partial<Product>): Promise<void> {
+    const current = this.products.find((product) => product.id === productId);
+    if (!current) throw new Error('Could not find this product to update.');
+
+    const updated = { ...current, ...patch };
+    if (isSupabaseConfigured && !await syncProductToSupabase(updated)) {
+      throw new Error('Could not save product availability to the database. Check your admin session and try again.');
+    }
+
+    this.products = this.products.map((product) => product.id === productId ? updated : product);
     this.save(STORAGE_KEYS.PRODUCTS, this.products);
-    const updated = this.products.find((p) => p.id === productId);
-    if (updated) syncProductToSupabase(updated);
     this.notify();
   }
 

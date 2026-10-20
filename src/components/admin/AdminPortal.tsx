@@ -69,7 +69,7 @@ interface AdminPortalProps {
   onUpdateOrderStatus: (orderId: string, status: OrderStatus, note?: string) => void;
   onDeleteOrder: (orderId: string) => Promise<void>;
   onUpdateConfig: (patch: Partial<AdminConfig>) => void;
-  onUpdateProduct: (id: string, patch: Partial<Product>) => void;
+  onUpdateProduct: (id: string, patch: Partial<Product>) => Promise<void>;
   onAddGraphic: (g: Omit<GraphicItem, 'id'>) => void;
   onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => Promise<void>;
   onUpdateGraphic: (id: string, patch: Partial<GraphicItem>) => Promise<void>;
@@ -186,6 +186,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const showSaveNotice = (msg: string) => {
     setSavedBanner(msg);
     setTimeout(() => setSavedBanner(null), 3500);
+  };
+
+  const saveProductUpdate = async (id: string, patch: Partial<Product>, successMessage: string) => {
+    try {
+      await onUpdateProduct(id, patch);
+      showSaveNotice(successMessage);
+    } catch (error) {
+      showSaveNotice(error instanceof Error ? error.message : 'Could not save product changes.');
+    }
   };
 
   const openGraphicEditor = (graphic: GraphicItem) => {
@@ -1067,8 +1076,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     value={prod.basePrice}
                     onChange={(e) => {
                       const val = parseFloat(e.target.value) || 0;
-                      onUpdateProduct(prod.id, { basePrice: val });
-                      showSaveNotice(`Updated ${prod.name} price to BD ${val}`);
+                      void saveProductUpdate(prod.id, { basePrice: val }, `Updated ${prod.name} price to BD ${val}`);
                     }}
                     className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs font-mono text-[#39FF14] focus:outline-none focus:border-[#39FF14]"
                   />
@@ -1100,8 +1108,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             type="button"
                             onClick={() => {
                               const remaining = prod.colors.filter((c) => c !== col);
-                              onUpdateProduct(prod.id, { colors: remaining });
-                              showSaveNotice(`Removed ${col} from ${prod.name}`);
+                              void saveProductUpdate(prod.id, { colors: remaining }, `Removed ${col} from ${prod.name}`);
                             }}
                             className="text-neutral-400 hover:text-red-400 cursor-pointer ml-0.5"
                             title="Remove color"
@@ -1125,8 +1132,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             type="button"
                             onClick={() => {
                               if (!isAlreadyAdded) {
-                                onUpdateProduct(prod.id, { colors: [...prod.colors, presetCol] });
-                                showSaveNotice(`Added ${presetCol} to ${prod.name}`);
+                                void saveProductUpdate(
+                                  prod.id,
+                                  { colors: [...prod.colors, presetCol] },
+                                  `Added ${presetCol} to ${prod.name}`
+                                );
                               }
                             }}
                             disabled={isAlreadyAdded}
@@ -1170,8 +1180,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             type="button"
                             onClick={() => {
                               const remaining = prod.sizes.filter((s) => s !== sz);
-                              onUpdateProduct(prod.id, { sizes: remaining });
-                              showSaveNotice(`Removed size ${sz}`);
+                              void saveProductUpdate(prod.id, { sizes: remaining }, `Removed size ${sz}`);
                             }}
                             className="text-neutral-400 hover:text-red-400 cursor-pointer ml-1"
                           >
@@ -1197,8 +1206,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             type="button"
                             onClick={() => {
                               if (!isAdded) {
-                                onUpdateProduct(prod.id, { sizes: [...prod.sizes, stdSz] });
-                                showSaveNotice(`Added size ${stdSz}`);
+                                void saveProductUpdate(prod.id, { sizes: [...prod.sizes, stdSz] }, `Added size ${stdSz}`);
                               }
                             }}
                             disabled={isAdded}
@@ -1231,9 +1239,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         onClick={() => {
                           const sizeVal = (customSizeInput[prod.id] || '').trim().toUpperCase();
                           if (sizeVal && !prod.sizes.includes(sizeVal)) {
-                            onUpdateProduct(prod.id, { sizes: [...prod.sizes, sizeVal] });
+                            void saveProductUpdate(prod.id, { sizes: [...prod.sizes, sizeVal] }, `Added custom size ${sizeVal}`);
                             setCustomSizeInput({ ...customSizeInput, [prod.id]: '' });
-                            showSaveNotice(`Added custom size ${sizeVal}`);
                           }
                         }}
                         className="px-2.5 py-1 bg-neutral-800 hover:bg-[#39FF14] text-white hover:text-black rounded text-[11px] font-mono font-bold transition cursor-pointer flex items-center gap-1"

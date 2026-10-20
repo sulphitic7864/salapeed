@@ -56,6 +56,61 @@ create table if not exists public.products (
   updated_at timestamptz not null default now()
 );
 
+insert into public.products (
+  id,
+  name,
+  brochure_title,
+  description,
+  kind,
+  base_price,
+  colors,
+  sizes,
+  image_type,
+  size_chart,
+  brochure_page
+)
+values
+  (
+    'kids-hoodie',
+    'Kids Hoodies',
+    'KIDS HOODIES (PULLOVER)',
+    'Cozy, durable 380 GSM kids fleece pullover hoodie for ages 2 to 12 years with classic kangaroo pouch pocket, no zippers, and reinforced double-needle seams.',
+    'kids',
+    7.5,
+    '["Black", "Red", "Heather Grey", "Navy", "Charcoal", "White"]'::jsonb,
+    '["2–3 Years", "4–5 Years", "6–7 Years", "8–9 Years", "10–11 Years", "12 Years"]'::jsonb,
+    'kids',
+    '{"headers":["Age Group","Chest (cm)","Length (cm)"],"rows":[{"size":"2–3 Years","cells":["34–36","42–44"]},{"size":"4–5 Years","cells":["37–39","46–48"]},{"size":"6–7 Years","cells":["40–42","50–52"]},{"size":"8–9 Years","cells":["43–45","54–56"]},{"size":"10–11 Years","cells":["46–48","58–60"]},{"size":"12 Years","cells":["49–51","62–64"]}]}'::jsonb,
+    7
+  ),
+  (
+    'fleece-hoodie',
+    'Adults Fleece Hoodie',
+    'ADULTS FLEECE HOODIE (PULLOVER)',
+    'Classic street pullover hoodie with kangaroo pouch pocket, double-layer drawstring hood, and 380 GSM brushed fleece warmth.',
+    'adult',
+    9.5,
+    '["Black", "Red", "Heather Grey", "Navy", "Charcoal", "White"]'::jsonb,
+    '["XS", "S", "M", "L", "XL", "XXL"]'::jsonb,
+    'pullover',
+    '{"headers":["Size","Shoulder (cm)","Chest (cm)","Length (cm)"],"rows":[{"size":"XS","cells":["42","48","62"]},{"size":"S","cells":["44","50","64"]},{"size":"M","cells":["46","54","68"]},{"size":"L","cells":["50","58","70"]},{"size":"XL","cells":["52","60","72"]},{"size":"XXL","cells":["56","64","76"]}]}'::jsonb,
+    3
+  ),
+  (
+    'zipper-hoodie',
+    'Adult Zip Hoodie',
+    'ADULT ZIP HOODIE',
+    'Heavyweight 380 GSM full-zip fleece hoodie with dual split kangaroo pockets, double-lined hood, and smooth metallic front zipper.',
+    'adult',
+    11.5,
+    '["Black", "Navy", "Heather Grey", "Red", "Charcoal", "White"]'::jsonb,
+    '["XS", "S", "M", "L", "XL", "XXL"]'::jsonb,
+    'zipper',
+    '{"headers":["Size","Shoulder (cm)","Chest (cm)","Length (cm)"],"rows":[{"size":"XS","cells":["42","48","62"]},{"size":"S","cells":["44","50","64"]},{"size":"M","cells":["46","54","68"]},{"size":"L","cells":["50","58","70"]},{"size":"XL","cells":["52","60","72"]},{"size":"XXL","cells":["56","64","76"]}]}'::jsonb,
+    1
+  )
+on conflict (id) do nothing;
+
 create table if not exists public.faqs (
   id text primary key,
   q text not null,
