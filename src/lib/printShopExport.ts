@@ -89,7 +89,7 @@ export function buildPrintShopPackage(order: Order): PrintShopPackage {
         inkColor: el.textColor || '#39FF14',
         svgArtwork: el.svgContent,
         imageUrl: el.imageUrl,
-        printReadyUrl: el.printReadyUrl,
+        printReadyUrl: el.printReadyUrl || el.imageUrl,
       })),
     })),
   };

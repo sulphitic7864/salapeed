@@ -558,6 +558,7 @@ class Store {
   public addGraphic(graphic: Omit<GraphicItem, 'id'>) {
     const newG: GraphicItem = {
       ...graphic,
+      printReadyUrl: graphic.printReadyUrl || graphic.previewUrl,
       id: `g-custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       isCustomAdmin: true,
     };
@@ -571,6 +572,7 @@ class Store {
   public async bulkAddGraphics(newItems: Omit<GraphicItem, 'id'>[]): Promise<void> {
     const created: GraphicItem[] = newItems.map((item, idx) => ({
       ...item,
+      printReadyUrl: item.printReadyUrl || item.previewUrl,
       id: `g-bulk-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
       isCustomAdmin: true,
     }));

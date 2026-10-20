@@ -325,6 +325,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             name: cleanName,
             category: bulkCategory,
             previewUrl: dataUrl,
+            printReadyUrl: dataUrl,
           });
         }
       } catch (error) {
