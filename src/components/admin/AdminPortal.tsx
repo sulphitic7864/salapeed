@@ -71,7 +71,7 @@ interface AdminPortalProps {
   onUpdateConfig: (patch: Partial<AdminConfig>) => void;
   onUpdateProduct: (id: string, patch: Partial<Product>) => void;
   onAddGraphic: (g: Omit<GraphicItem, 'id'>) => void;
-  onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => void;
+  onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => Promise<void>;
   onUpdateGraphic: (id: string, patch: Partial<GraphicItem>) => Promise<void>;
   onDeleteGraphic: (id: string) => void;
   onAddCategory: (cat: string) => Promise<void>;
@@ -295,10 +295,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setBulkUploadMsg(`Processing ${files.length} artwork images...`);
 
     const newItems: Omit<GraphicItem, 'id'>[] = [];
+    const failedFiles: string[] = [];
     const fileArray = Array.from(files);
 
     for (const file of fileArray) {
       try {
+        if (file.size > 20 * 1024 * 1024) {
+          throw new Error(`${file.name} exceeds the 20 MB per-file limit.`);
+        }
         const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
         if (file.type.includes('svg')) {
           const text = await file.text();
@@ -309,11 +313,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             previewUrl: '',
           });
         } else {
-          // Read image as base64 data URL
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
+            reader.onload = () => typeof reader.result === 'string'
+              ? resolve(reader.result)
+              : reject(new Error(`Could not read ${file.name}.`));
+            reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
             reader.readAsDataURL(file);
           });
           newItems.push({
@@ -322,26 +327,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             previewUrl: dataUrl,
           });
         }
-      } catch (err) {
-        console.error('Error processing file:', file.name, err);
+      } catch (error) {
+        console.error('Error processing graphic file:', file.name, error);
+        failedFiles.push(error instanceof Error ? error.message : `Could not process ${file.name}.`);
       }
     }
 
-    if (newItems.length > 0) {
-      if (onBulkAddGraphics) {
-        onBulkAddGraphics(newItems);
+    try {
+      if (newItems.length > 0) {
+        if (onBulkAddGraphics) {
+          await onBulkAddGraphics(newItems);
+        } else {
+          newItems.forEach((item) => onAddGraphic(item));
+        }
+        const skipped = failedFiles.length ? ` ${failedFiles.length} file(s) were skipped: ${failedFiles.join(' ')}` : '';
+        setBulkUploadMsg(`✓ Successfully added ${newItems.length} graphics to library under "${bulkCategory}".${skipped}`);
+        showSaveNotice(`Added ${newItems.length} images to library.`);
       } else {
-        newItems.forEach((it) => onAddGraphic(it));
+        setBulkUploadMsg(failedFiles.join(' ') || 'Could not process selected files.');
       }
-      setBulkUploadMsg(`✓ Successfully added ${newItems.length} graphics to library under "${bulkCategory}"!`);
-      showSaveNotice(`Added ${newItems.length} images to library.`);
-    } else {
-      setBulkUploadMsg('Could not process selected files.');
-    }
-
-    setBulkUploading(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save the uploaded graphics.';
+      setBulkUploadMsg(message);
+      showSaveNotice(message);
+    } finally {
+      setBulkUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -1367,7 +1380,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     Bulk Image & Artwork Upload (50+ Images at Once)
                   </h3>
                   <p className="text-xs text-neutral-400">
-                    Select up to 50 files simultaneously (.png, .jpg, .webp, .svg). They are instantly added to the studio catalogue.
+                    Select up to 50 files simultaneously (.png, .jpg, .webp, .avif, .gif, .svg; 20 MB max each). They are instantly added to the studio catalogue.
                   </p>
                 </div>
               </div>

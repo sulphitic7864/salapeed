@@ -21,9 +21,12 @@ const ADMIN_SESSION_COOKIE = 'salapeed_admin_session';
 const ADMIN_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 const ORDER_ASSET_BUCKET = 'order-assets';
 const BENEFIT_QR_BUCKET = 'benefit-payment-qr';
+const GRAPHIC_ASSET_BUCKET = 'graphics';
+const MAX_GRAPHIC_ASSET_BYTES = 20 * 1024 * 1024;
 let orderAssetAdmin;
 let orderAssetBucketInitialization;
 let benefitQrBucketInitialization;
+let graphicAssetBucketInitialization;
 
 function getAdminSessionSecret() {
   return process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PRINT_SHOP_RELEASE_TOKEN || '';
@@ -218,6 +221,49 @@ async function ensureBenefitQrBucket() {
     });
   }
   await benefitQrBucketInitialization;
+}
+
+async function ensureGraphicAssetBucket() {
+  if (!graphicAssetBucketInitialization) {
+    graphicAssetBucketInitialization = (async () => {
+      const { url, serviceKey } = getSupabaseSettings();
+      const admin = createClient(url, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { error: lookupError } = await admin.storage.getBucket(GRAPHIC_ASSET_BUCKET);
+      if (!lookupError) {
+        const { error: updateError } = await admin.storage.updateBucket(GRAPHIC_ASSET_BUCKET, {
+          public: true,
+          fileSizeLimit: MAX_GRAPHIC_ASSET_BYTES,
+          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
+        });
+        if (updateError) {
+          throw new Error(`Could not configure graphic asset storage: ${updateError.message}`);
+        }
+        return;
+      }
+      if (Number(lookupError.statusCode) !== 404 && Number(lookupError.status) !== 404) {
+        throw new Error(`Could not check graphic asset storage: ${lookupError.message}`);
+      }
+
+      const { error: createError } = await admin.storage.createBucket(GRAPHIC_ASSET_BUCKET, {
+        public: true,
+        fileSizeLimit: MAX_GRAPHIC_ASSET_BYTES,
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif'],
+      });
+      if (
+        createError &&
+        Number(createError.statusCode) !== 409 &&
+        Number(createError.status) !== 409
+      ) {
+        throw new Error(`Could not create graphic asset storage: ${createError.message}`);
+      }
+    })().catch((error) => {
+      graphicAssetBucketInitialization = undefined;
+      throw error;
+    });
+  }
+  await graphicAssetBucketInitialization;
 }
 
 async function createOrderAssetSignedUrl(path, expiresIn = 60 * 60 * 24 * 7) {
@@ -638,6 +684,42 @@ app.get('/api/graphics', async (_request, response) => {
   } catch (error) {
     console.error('Supabase graphics read failed:', error.message);
     return response.status(error.statusCode || 502).json({ error: error.statusCode === 503 ? error.message : 'Could not load graphics from Supabase.' });
+  }
+});
+
+app.post('/api/admin/graphics/assets/sign', async (request, response) => {
+  if (!requireAdminSession(request, response)) return;
+  const { id, contentType, size } = request.body || {};
+  if (
+    typeof id !== 'string' ||
+    !/^[a-zA-Z0-9_-]{1,100}$/.test(id) ||
+    !['image/png', 'image/jpeg', 'image/gif'].includes(contentType) ||
+    !Number.isInteger(size) ||
+    size < 1 ||
+    size > MAX_GRAPHIC_ASSET_BYTES
+  ) {
+    return response.status(400).json({ error: 'Provide a valid graphic ID and an image no larger than 20 MB.' });
+  }
+
+  try {
+    await ensureGraphicAssetBucket();
+    const { url, serviceKey } = getSupabaseSettings();
+    const admin = createClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const assetPath = `${id}/artwork`;
+    const { data, error } = await admin.storage
+      .from(GRAPHIC_ASSET_BUCKET)
+      .createSignedUploadUrl(assetPath, { upsert: true });
+    if (error || !data?.token) {
+      throw new Error(`Could not authorize graphic image upload: ${error?.message || 'Unknown storage error.'}`);
+    }
+    return response.json({ path: assetPath, token: data.token });
+  } catch (error) {
+    console.error('Graphic asset upload authorization failed:', error.message);
+    return response.status(error.statusCode || 502).json({
+      error: error.message || 'Could not prepare Supabase Storage for this graphic.',
+    });
   }
 });
 

@@ -17,11 +17,15 @@ export const isSupabaseConfigured = Boolean(
 );
 
 const ORDER_ASSET_BUCKET = 'order-assets';
+const GRAPHIC_ASSET_BUCKET = 'graphics';
 const MAX_ORDER_ASSETS = 100;
 const MAX_ORDER_ASSET_BYTES = 20 * 1024 * 1024;
-const orderAssetStorage = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey).storage.from(ORDER_ASSET_BUCKET)
+const MAX_GRAPHIC_ASSET_BYTES = 20 * 1024 * 1024;
+const supabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+const orderAssetStorage = supabaseClient?.storage.from(ORDER_ASSET_BUCKET) || null;
+const graphicAssetStorage = supabaseClient?.storage.from(GRAPHIC_ASSET_BUCKET) || null;
 
 interface PendingOrderAsset {
   path: string;
@@ -276,6 +280,76 @@ export async function syncGraphicToSupabase(graphic: GraphicItem): Promise<boole
     { method: 'POST', body: JSON.stringify(graphic) }
   );
   return result?.saved === true;
+}
+
+export async function uploadGraphicAssetToSupabase(id: string, dataUrl: string): Promise<string> {
+  const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp|avif|gif));base64,([A-Za-z0-9+/]+={0,2})$/i);
+  if (!match || match[2].length > Math.ceil(MAX_GRAPHIC_ASSET_BYTES / 3) * 4) {
+    throw new Error('Upload a PNG, JPEG, WebP, AVIF, or GIF image no larger than 20 MB.');
+  }
+
+  let binary: string;
+  try {
+    binary = atob(match[2]);
+  } catch {
+    throw new Error('The graphic image is not valid base64 data.');
+  }
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  let blob = new Blob([bytes], { type: match[1].toLowerCase() });
+  if (!blob.size || blob.size > MAX_GRAPHIC_ASSET_BYTES) {
+    throw new Error('Upload a graphic image no larger than 20 MB.');
+  }
+  if (blob.type === 'image/webp' || blob.type === 'image/avif') {
+    let image: ImageBitmap;
+    try {
+      image = await createImageBitmap(blob);
+    } catch {
+      throw new Error('This browser could not decode the WebP or AVIF image. Please convert it to PNG and upload again.');
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      image.close();
+      throw new Error('Could not convert this image to PNG.');
+    }
+    context.drawImage(image, 0, 0);
+    image.close();
+    blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((converted) => converted
+        ? resolve(converted)
+        : reject(new Error('Could not convert this image to PNG.')), 'image/png');
+    });
+    if (!blob.size || blob.size > MAX_GRAPHIC_ASSET_BYTES) {
+      throw new Error('The converted PNG exceeds the 20 MB storage limit.');
+    }
+  }
+
+  const authorization = await requestJson<{ path: string; token: string }>(
+    '/api/admin/graphics/assets/sign',
+    {
+      method: 'POST',
+      body: JSON.stringify({ id, contentType: blob.type, size: blob.size }),
+    }
+  );
+  if (!authorization?.path || !authorization.token || !graphicAssetStorage) {
+    throw new Error('Could not prepare Supabase Storage for this graphic. Check your admin session and try again.');
+  }
+  const { error } = await graphicAssetStorage.uploadToSignedUrl(
+    authorization.path,
+    authorization.token,
+    blob,
+    { contentType: blob.type, upsert: true }
+  );
+  if (error) {
+    throw new Error(`Could not upload the graphic image to Supabase Storage: ${error.message}`);
+  }
+  return graphicAssetStorage.getPublicUrl(authorization.path).data.publicUrl;
 }
 
 export async function syncGraphicCategoriesToSupabase(categories: string[]): Promise<boolean> {

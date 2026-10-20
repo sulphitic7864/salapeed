@@ -698,6 +698,13 @@ export const GarmentMockup: React.FC<GarmentMockupProps> = ({
                     className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center p-1 pointer-events-none"
                     dangerouslySetInnerHTML={{ __html: elem.svgContent }}
                   />
+                ) : elem.type === 'graphic' && elem.imageUrl ? (
+                  <img
+                    src={elem.imageUrl}
+                    alt={elem.graphicName || 'Graphic'}
+                    className="max-w-[130px] max-h-[130px] object-contain pointer-events-none"
+                    draggable={false}
+                  />
                 ) : elem.type === 'upload' && elem.imageUrl ? (
                   // 2. Customer Uploaded Image
                   <div className="relative pointer-events-none">

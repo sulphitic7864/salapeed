@@ -27,6 +27,7 @@ import {
   fetchAdminConfigFromSupabase,
   deleteOrderFromSupabase,
   syncGraphicToSupabase,
+  uploadGraphicAssetToSupabase,
   syncGraphicCategoriesToSupabase,
   deleteGraphicFromSupabase,
   deleteGraphicCategoryFromSupabase,
@@ -567,17 +568,28 @@ class Store {
     return newG;
   }
 
-  public bulkAddGraphics(newItems: Omit<GraphicItem, 'id'>[]) {
+  public async bulkAddGraphics(newItems: Omit<GraphicItem, 'id'>[]): Promise<void> {
     const created: GraphicItem[] = newItems.map((item, idx) => ({
       ...item,
       id: `g-bulk-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
       isCustomAdmin: true,
     }));
+
+    if (isSupabaseConfigured) {
+      for (const graphic of created) {
+        if (graphic.previewUrl?.startsWith('data:image/')) {
+          graphic.previewUrl = await uploadGraphicAssetToSupabase(graphic.id, graphic.previewUrl);
+        }
+      }
+      const saved = await Promise.all(created.map(syncGraphicToSupabase));
+      if (saved.some((wasSaved) => !wasSaved)) {
+        throw new Error('Some graphics could not be saved to Supabase. Check your admin session and try again.');
+      }
+    }
+
     this.graphics = [...created, ...this.graphics];
     this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
-    created.forEach((g) => syncGraphicToSupabase(g));
     this.notify();
-    return created;
   }
 
   public async updateGraphic(id: string, patch: Partial<GraphicItem>) {
@@ -585,6 +597,9 @@ class Store {
     if (!current) throw new Error('Could not find this graphic to update.');
 
     const updated = { ...current, ...patch };
+    if (isSupabaseConfigured && updated.previewUrl?.startsWith('data:image/')) {
+      updated.previewUrl = await uploadGraphicAssetToSupabase(id, updated.previewUrl);
+    }
     if (isSupabaseConfigured && !await syncGraphicToSupabase(updated)) {
       throw new Error('Could not save this graphic to Supabase. Check your admin session and try again.');
     }
