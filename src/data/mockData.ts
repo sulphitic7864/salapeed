@@ -44,6 +44,12 @@ export const SALAPEED_BRAND = {
 export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 export const KIDS_SIZES = ['2–3 Years', '4–5 Years', '6–7 Years', '8–9 Years', '10–11 Years', '12 Years'];
 
+export function formatSizeLabel(size: string): string {
+  return size
+    .replace(/[–—−]/g, '-')
+    .replace(/(\d)\?(\d)/g, '$1-$2');
+}
+
 export const INITIAL_PRODUCTS: Product[] = [
   // 1. KIDS HOODIE (Positioned 1st Site-Wide as Requested)
   {
