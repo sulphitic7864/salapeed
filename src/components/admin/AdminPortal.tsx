@@ -55,6 +55,38 @@ type PendingDeletion =
   | { kind: 'graphic'; graphic: GraphicItem }
   | { kind: 'category'; category: string; graphicCount: number; replacementCategory: string };
 
+async function readArtworkFile(file: File): Promise<string> {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  const contentType = file.type || ({
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+    avif: 'image/avif',
+    gif: 'image/gif',
+  } as Record<string, string>)[extension || ''];
+  if (!contentType || !/^image\/(png|jpeg|webp|avif|gif)$/i.test(contentType)) {
+    throw new Error(`Unsupported image format for ${file.name}.`);
+  }
+
+  let buffer: ArrayBuffer;
+  try {
+    buffer = await file.arrayBuffer();
+  } catch (error) {
+    const reason = error instanceof Error ? ` ${error.message}` : '';
+    throw new Error(`Could not read ${file.name}.${reason}`);
+  }
+  if (!buffer.byteLength) throw new Error(`${file.name} is empty.`);
+
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return `data:${contentType.toLowerCase()};base64,${btoa(binary)}`;
+}
+
 interface AdminPortalProps {
   isAdmin: boolean;
   onLogin: (email: string, password: string) => Promise<boolean>;
@@ -306,6 +338,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     const newItems: Omit<GraphicItem, 'id'>[] = [];
     const failedFiles: string[] = [];
     const fileArray = Array.from(files);
+    const uploadBatchSize = 3;
+    let uploadedCount = 0;
+    let uploadError: string | null = null;
+
+    const saveBatch = async () => {
+      if (!newItems.length) return;
+      const batch = [...newItems];
+      if (onBulkAddGraphics) {
+        await onBulkAddGraphics(batch);
+      } else {
+        batch.forEach((item) => onAddGraphic(item));
+      }
+      uploadedCount += batch.length;
+      newItems.length = 0;
+    };
 
     for (const file of fileArray) {
       try {
@@ -313,7 +360,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           throw new Error(`${file.name} exceeds the 20 MB per-file limit.`);
         }
         const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-        if (file.type.includes('svg')) {
+        if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
           const text = await file.text();
           newItems.push({
             name: cleanName,
@@ -322,14 +369,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             previewUrl: '',
           });
         } else {
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => typeof reader.result === 'string'
-              ? resolve(reader.result)
-              : reject(new Error(`Could not read ${file.name}.`));
-            reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
-            reader.readAsDataURL(file);
-          });
+          const dataUrl = await readArtworkFile(file);
           newItems.push({
             name: cleanName,
             category: bulkCategory,
@@ -341,20 +381,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         console.error('Error processing graphic file:', file.name, error);
         failedFiles.push(error instanceof Error ? error.message : `Could not process ${file.name}.`);
       }
+
+      if (newItems.length >= uploadBatchSize) {
+        try {
+          await saveBatch();
+          setBulkUploadMsg(`Uploaded ${uploadedCount} of ${fileArray.length} artwork images...`);
+        } catch (error) {
+          uploadError = error instanceof Error ? error.message : 'Could not save the uploaded graphics.';
+          break;
+        }
+      }
     }
 
     try {
-      if (newItems.length > 0) {
-        if (onBulkAddGraphics) {
-          await onBulkAddGraphics(newItems);
-        } else {
-          newItems.forEach((item) => onAddGraphic(item));
-        }
+      if (newItems.length > 0 && !uploadError) await saveBatch();
+      if (uploadedCount > 0) {
         const skipped = failedFiles.length ? ` ${failedFiles.length} file(s) were skipped: ${failedFiles.join(' ')}` : '';
-        setBulkUploadMsg(`✓ Successfully added ${newItems.length} graphics to library under "${bulkCategory}".${skipped}`);
-        showSaveNotice(`Added ${newItems.length} images to library.`);
+        const stopped = uploadError ? ` Upload stopped: ${uploadError}` : '';
+        setBulkUploadMsg(`✓ Successfully added ${uploadedCount} graphics to library under "${bulkCategory}".${skipped}${stopped}`);
+        showSaveNotice(`Added ${uploadedCount} images to library.`);
       } else {
-        setBulkUploadMsg(failedFiles.join(' ') || 'Could not process selected files.');
+        setBulkUploadMsg(uploadError || failedFiles.join(' ') || 'Could not process selected files.');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not save the uploaded graphics.';

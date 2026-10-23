@@ -587,6 +587,7 @@ class Store {
       for (const graphic of created) {
         if (graphic.previewUrl?.startsWith('data:image/')) {
           graphic.previewUrl = await uploadGraphicAssetToSupabase(graphic.id, graphic.previewUrl);
+          graphic.printReadyUrl = graphic.previewUrl;
         }
       }
       const saved = await Promise.all(created.map(syncGraphicToSupabase));
