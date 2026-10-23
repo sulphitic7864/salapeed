@@ -2,7 +2,7 @@ import React from 'react';
 import { CartItem } from '../types';
 import { formatBHD } from '../lib/store';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
-import { COLOR_OPTIONS, getHoodiePhoto } from '../data/mockData';
+import { COLOR_OPTIONS, formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 
 interface CartViewProps {
   cart: CartItem[];
@@ -92,7 +92,7 @@ export const CartView: React.FC<CartViewProps> = ({
                     <h3 className="text-sm font-bold text-white">{item.productName}</h3>
                     <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-neutral-400">
                       <span className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-200">
-                        Size: {item.size}
+                        Size: {formatSizeLabel(item.size)}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-200">
                         Color: {item.color}

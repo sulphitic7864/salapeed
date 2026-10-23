@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { COLOR_OPTIONS, getHoodiePhoto } from '../data/mockData';
+import { COLOR_OPTIONS, formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 import { Sparkles, Check, ArrowRight, X, AlertCircle } from 'lucide-react';
 
 interface GarmentSelectionModalProps {
@@ -196,7 +196,7 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
               <span>Step 2: Choose Age & Size</span>
               {selectedSize && (
                 <span className="text-[10px] font-mono text-[#39FF14] font-bold">
-                  ✓ SIZE: {selectedSize}
+                  ✓ SIZE: {formatSizeLabel(selectedSize)}
                 </span>
               )}
             </label>
@@ -226,7 +226,7 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
                             : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-white'
                         }`}
                       >
-                        {sz}
+                        {formatSizeLabel(sz)}
                       </button>
                     );
                   })}
@@ -317,7 +317,7 @@ export const GarmentSelectionModal: React.FC<GarmentSelectionModalProps> = ({
                   {selectedProduct.name} &bull; {selectedColor}
                 </h4>
                 <p className="text-[11px] text-neutral-400 font-mono">
-                  Size: <strong className="text-white">{selectedSize}</strong> &bull; Authentic 380 GSM Plain Fleece
+                  Size: <strong className="text-white">{formatSizeLabel(selectedSize)}</strong> &bull; Authentic 380 GSM Plain Fleece
                 </p>
               </div>
             </div>

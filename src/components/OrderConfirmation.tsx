@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Package,
 } from 'lucide-react';
-import { getHoodiePhoto } from '../data/mockData';
+import { formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 
 interface OrderConfirmationProps {
   order: Order;
@@ -111,7 +111,7 @@ export const OrderConfirmation: React.FC<OrderConfirmationProps> = ({
                     />
                   </div>
                   <div className="text-[10px] font-mono text-[#39FF14]">
-                    Color: {item.color} &bull; {item.size}
+                    Color: {item.color} &bull; {formatSizeLabel(item.size)}
                   </div>
                 </div>
 

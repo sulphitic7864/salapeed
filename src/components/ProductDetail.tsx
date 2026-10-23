@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { COLOR_OPTIONS, getHoodiePhoto } from '../data/mockData';
+import { COLOR_OPTIONS, formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 import { formatBHD } from '../lib/store';
 import {
   ArrowLeft,
@@ -280,7 +280,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                             : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700'
                         }`}
                       >
-                        {s}
+                        {formatSizeLabel(s)}
                       </button>
                     );
                   })}
@@ -315,10 +315,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                                 : 'text-neutral-300'
                             }`}
                           >
-                            <td className="py-1.5 px-2">{row.size}</td>
+                            <td className="py-1.5 px-2">{formatSizeLabel(row.size)}</td>
                             {row.cells.map((c, idx) => (
                               <td key={idx} className="py-1.5 px-2">
-                                {c} cm
+                                {formatSizeLabel(c)} cm
                               </td>
                             ))}
                           </tr>

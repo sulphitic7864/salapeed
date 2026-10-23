@@ -8,7 +8,7 @@ import {
   FaqItem,
 } from '../../types';
 import { formatBHD } from '../../lib/store';
-import { COLOR_OPTIONS, getHoodiePhoto } from '../../data/mockData';
+import { COLOR_OPTIONS, formatSizeLabel, getHoodiePhoto } from '../../data/mockData';
 import { isSupabaseConfigured, uploadBenefitQrImage } from '../../lib/supabase';
 import {
   LayoutDashboard,
@@ -941,7 +941,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <div className="text-xs space-y-0.5">
                           <div className="font-bold text-white">{it.productName}</div>
                           <div className="text-[11px] font-mono text-neutral-400">
-                            Color: <strong className="text-white">{it.color}</strong> &bull; Size: <strong className="text-white">{it.size}</strong> &bull; Qty: <strong className="text-[#39FF14]">{it.qty}</strong>
+                            Color: <strong className="text-white">{it.color}</strong> &bull; Size: <strong className="text-white">{formatSizeLabel(it.size)}</strong> &bull; Qty: <strong className="text-[#39FF14]">{it.qty}</strong>
                           </div>
                           <div className="text-[10px] text-neutral-500">
                             Placements: {it.placements?.length || 0} custom element(s)
@@ -1012,7 +1012,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         const msg = `*SALAPEED WORKSHOP PRODUCTION JOB #${o.id}*\n` +
                           `Customer: ${o.customerName}\n` +
                           `Phone: ${o.customerPhone}\n` +
-                          `Items: ${o.items.map(it => `${it.qty}x ${it.productName} (${it.color}, ${it.size})`).join(', ')}\n` +
+                          `Items: ${o.items.map(it => `${it.qty}x ${it.productName} (${it.color}, ${formatSizeLabel(it.size)})`).join(', ')}\n` +
                           `Total: BD ${o.total.toFixed(3)} (BenefitPay Confirmed)\n` +
                           `Delivery: ${o.customerAddress}\n\n` +
                           `Please review attached spec sheet & print placements.`;
@@ -1174,7 +1174,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         key={sz}
                         className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700 text-white text-[11px] font-mono font-bold flex items-center gap-1"
                       >
-                        <span>{sz}</span>
+                        <span>{formatSizeLabel(sz)}</span>
                         {prod.sizes.length > 1 && (
                           <button
                             type="button"
@@ -2031,7 +2031,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         </div>
                         <div className="text-right">
                           <span className="inline-block bg-black text-white px-3 py-1 rounded text-xs font-mono font-bold">
-                            SIZE: {it.size} &bull; QTY: {it.qty}
+                            SIZE: {formatSizeLabel(it.size)} &bull; QTY: {it.qty}
                           </span>
                           <div className="text-xs font-bold text-neutral-800 mt-1">Color: {it.color}</div>
                         </div>

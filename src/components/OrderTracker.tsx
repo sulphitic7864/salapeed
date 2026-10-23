@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Order, AdminConfig } from '../types';
 import { formatBHD } from '../lib/store';
 import { Search, Clock, Printer, Truck, CheckCircle2, ArrowLeft, Phone, MapPin, Download, FileCode } from 'lucide-react';
-import { getHoodiePhoto } from '../data/mockData';
+import { formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 import { downloadPrintShopElectronicFile } from '../lib/printShopExport';
 
 interface OrderTrackerProps {
@@ -202,7 +202,7 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({
                   </div>
                   <div className="flex-1 space-y-0.5">
                     <div className="flex items-center justify-between font-bold text-white">
-                      <span>{it.productName} ({it.color}, {it.size})</span>
+                      <span>{it.productName} ({it.color}, {formatSizeLabel(it.size)})</span>
                       <span className="font-mono text-[#39FF14]">x{it.qty}</span>
                     </div>
                     <div className="text-neutral-400 text-[11px] font-mono">

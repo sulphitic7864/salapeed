@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { toJpeg } from 'html-to-image';
 import { Product, PlantedElement, PrintZone, GarmentSide, GraphicItem } from '../types';
-import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS, INITIAL_GRAPHICS, getHoodiePhoto } from '../data/mockData';
+import { PRINT_ZONES, FONT_OPTIONS, INK_COLORS, COLOR_OPTIONS, INITIAL_GRAPHICS, formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 import { GarmentMockup } from './GarmentMockup';
 import {
   RotateCcw,
@@ -317,7 +317,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
             {product.name}
           </span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300">
-            {colorName} · {sizeName}
+            {colorName} · {formatSizeLabel(sizeName)}
           </span>
         </div>
       </div>
@@ -351,7 +351,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
               <div className="text-[11px] text-neutral-400 flex items-center gap-2">
                 <span>Color: <strong className="text-white">{colorName}</strong></span>
                 <span>•</span>
-                <span>Size: <strong className="text-white">{sizeName}</strong></span>
+                <span>Size: <strong className="text-white">{formatSizeLabel(sizeName)}</strong></span>
               </div>
             </div>
           </div>
@@ -474,7 +474,7 @@ export const PlacementEditor: React.FC<PlacementEditorProps> = ({
                             : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                         }`}
                       >
-                        {s}
+                        {formatSizeLabel(s)}
                       </button>
                     ))}
                   </div>

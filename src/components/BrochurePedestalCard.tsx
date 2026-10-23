@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { COLOR_OPTIONS, SALAPEED_BRAND, getHoodiePhoto } from '../data/mockData';
+import { COLOR_OPTIONS, SALAPEED_BRAND, formatSizeLabel, getHoodiePhoto } from '../data/mockData';
 import { Phone, Globe, Instagram, Check, ArrowRight } from 'lucide-react';
 
 interface BrochurePedestalCardProps {
@@ -162,7 +162,7 @@ export const BrochurePedestalCard: React.FC<BrochurePedestalCardProps> = ({
         <div className="text-[11px] sm:text-xs font-mono font-bold text-neutral-800 tracking-wider">
           {product.kind === 'kids'
             ? 'Sizes Available: 2 Years to 12 years'
-            : `Sizes Available: ${product.sizes.join(', ')}`}
+            : `Sizes Available: ${product.sizes.map(formatSizeLabel).join(', ')}`}
         </div>
       </div>
 
