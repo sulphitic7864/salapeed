@@ -856,13 +856,15 @@ app.post('/api/orders/assets/sign', async (request, response) => {
     await ensureOrderAssetBucket();
     const uploads = await Promise.all(assets.map(async (asset, index) => {
       const pathMatch = typeof asset?.path === 'string'
-        ? asset.path.match(new RegExp(`^${orderId}/asset-${index}\\.(jpg|png|svg|webp)$`))
+        ? asset.path.match(new RegExp(`^${orderId}/asset-${index}\\.(jpg|png|svg|webp|gif|avif)$`))
         : null;
       const contentTypes = {
         jpg: 'image/jpeg',
         png: 'image/png',
         svg: 'image/svg+xml',
         webp: 'image/webp',
+        gif: 'image/gif',
+        avif: 'image/avif',
       };
       if (!pathMatch || contentTypes[pathMatch[1]] !== asset.contentType) {
         throw new Error('The order design asset metadata is invalid.');
@@ -891,7 +893,7 @@ function safePrintFilename(value) {
 
 function decodeImageDataUrl(value, filename) {
   const match = typeof value === 'string'
-    ? value.match(/^data:(image\/(?:jpeg|png|svg\+xml|webp));(base64),([\s\S]*)$/i)
+    ? value.match(/^data:(image\/(?:jpeg|png|svg\+xml|webp|gif|avif));(base64),([\s\S]*)$/i)
       || value.match(/^data:(image\/svg\+xml)(?:;charset=[^;,]+)?,([\s\S]*)$/i)
     : null;
   if (!match) throw new Error(`Print asset "${filename}" is not a supported embedded image.`);
@@ -922,7 +924,7 @@ async function loadPrintImage(source, filename) {
     }
     const contentType = data.type.split(';')[0].toLowerCase();
     const buffer = Buffer.from(await data.arrayBuffer());
-    if (!['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'].includes(contentType)) {
+    if (!['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/gif', 'image/avif'].includes(contentType)) {
       throw new Error(`Print asset "${filename}" is not a supported image format.`);
     }
     if (!buffer.length || buffer.length > 20 * 1024 * 1024) {
@@ -944,7 +946,7 @@ async function loadPrintImage(source, filename) {
   const result = await fetch(assetUrl, { signal: AbortSignal.timeout(10000) });
   if (!result.ok) throw new Error(`Could not download print asset "${filename}" from Supabase storage.`);
   const contentType = (result.headers.get('content-type') || '').split(';')[0].toLowerCase();
-  if (!['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'].includes(contentType)) {
+  if (!['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp', 'image/gif', 'image/avif'].includes(contentType)) {
     throw new Error(`Print asset "${filename}" is not a supported image format.`);
   }
   const buffer = Buffer.from(await result.arrayBuffer());
@@ -988,16 +990,27 @@ async function buildPrintShopAttachments(order) {
     for (const [placementIndex, placement] of (item.placements || []).entries()) {
       if (placement.type !== 'graphic' && placement.type !== 'upload') continue;
       const name = safePrintFilename(placement.graphicName || `ARTWORK-${placementIndex + 1}`);
-      const source = placement.svgContent || placement.printReadyUrl || placement.imageUrl;
+      const source = placement.printReadyUrl || placement.svgContent;
+      if (!source) {
+        throw new Error(`Print-ready original for "${name}" is missing. The preview was not attached as a substitute.`);
+      }
       const image = await loadPrintImage(source, name);
-      const artwork = await sharp(image.buffer, { limitInputPixels: 100_000_000 })
-        .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
-        .png()
-        .toBuffer();
+      const extensionByContentType = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/svg+xml': 'svg',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+        'image/avif': 'avif',
+      };
+      const extension = extensionByContentType[image.contentType];
+      if (!extension) {
+        throw new Error(`Print-ready original for "${name}" has an unsupported file type.`);
+      }
       addAttachment(
-        `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${name}.png`,
-        'image/png',
-        artwork
+        `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${name}.${extension}`,
+        image.contentType,
+        image.buffer
       );
     }
   }

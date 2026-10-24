@@ -195,9 +195,11 @@ export function generatePrintShopPackageEmail(
 ): EmailSimulation {
   const shopEmail = customShopEmail || 'workshop@salapeed.com';
 
-  // Count attached files (high-res artwork elements)
+  // Count only artwork files; text placements do not have image attachments.
   const totalArtworks = order.items.reduce(
-    (acc, it) => acc + (it.placements?.length || 0),
+    (acc, it) => acc + (it.placements || []).filter(
+      (placement) => placement.type === 'graphic' || placement.type === 'upload'
+    ).length,
     0
   );
 
@@ -321,7 +323,7 @@ ${order.customerNotes ? `Notes: ${order.customerNotes}\n` : ''}Payment: BenefitP
 GARMENTS TO PRODUCE (${order.items.reduce((a, b) => a + b.qty, 0)} Total):
 ${itemsSummaryShort}
 
-Artwork: ${totalArtworks} placed artwork items; raster artwork is attached as PNG files.
+Artwork: ${totalArtworks} placed artwork items; print-ready originals are attached without resizing or format conversion.
 Workshop: Seef, Manama, Kingdom of Bahrain`;
 
   return {

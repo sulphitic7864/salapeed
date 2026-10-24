@@ -34,7 +34,7 @@ interface PendingOrderAsset {
 }
 
 function getInlineAsset(value: string): { blob: Blob; extension: string } | null {
-  const base64Image = value.match(/^data:(image\/(?:jpeg|png|svg\+xml|webp))(?:;charset=[^;,]+)?;base64,([\s\S]*)$/i);
+  const base64Image = value.match(/^data:(image\/(?:jpeg|png|svg\+xml|webp|gif|avif))(?:;charset=[^;,]+)?;base64,([\s\S]*)$/i);
   if (base64Image) {
     const contentType = base64Image[1].toLowerCase();
     const extension = contentType === 'image/svg+xml'
