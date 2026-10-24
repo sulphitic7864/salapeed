@@ -995,22 +995,38 @@ async function buildPrintShopAttachments(order) {
         throw new Error(`Print-ready original for "${name}" is missing. The preview was not attached as a substitute.`);
       }
       const image = await loadPrintImage(source, name);
+      let attachmentBuffer = image.buffer;
+      let attachmentContentType = image.contentType;
+      if (image.contentType === 'image/svg+xml') {
+        const metadata = await sharp(image.buffer).metadata();
+        const largestDimension = Math.max(metadata.width || 0, metadata.height || 0);
+        const density = largestDimension
+          ? Math.min(2880, Math.max(72, (4096 * 72) / largestDimension))
+          : 2880;
+        attachmentBuffer = await sharp(image.buffer, {
+          density,
+          limitInputPixels: 100_000_000,
+        })
+          .resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
+          .png()
+          .toBuffer();
+        attachmentContentType = 'image/png';
+      }
       const extensionByContentType = {
         'image/jpeg': 'jpg',
         'image/png': 'png',
-        'image/svg+xml': 'svg',
         'image/webp': 'webp',
         'image/gif': 'gif',
         'image/avif': 'avif',
       };
-      const extension = extensionByContentType[image.contentType];
+      const extension = extensionByContentType[attachmentContentType];
       if (!extension) {
-        throw new Error(`Print-ready original for "${name}" has an unsupported file type.`);
+        throw new Error(`Print-ready artwork for "${name}" could not be converted to a visible image format.`);
       }
       addAttachment(
         `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${name}.${extension}`,
-        image.contentType,
-        image.buffer
+        attachmentContentType,
+        attachmentBuffer
       );
     }
   }
