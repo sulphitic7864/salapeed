@@ -105,7 +105,7 @@ interface AdminPortalProps {
   onAddGraphic: (g: Omit<GraphicItem, 'id'>) => void;
   onBulkAddGraphics?: (items: Omit<GraphicItem, 'id'>[]) => Promise<void>;
   onUpdateGraphic: (id: string, patch: Partial<GraphicItem>) => Promise<void>;
-  onDeleteGraphic: (id: string) => void;
+  onDeleteGraphic: (id: string) => Promise<void>;
   onAddCategory: (cat: string) => Promise<void>;
   onDeleteCategory: (category: string) => Promise<void>;
   onAddFaq?: (faq: Omit<FaqItem, 'id'>) => void;
@@ -206,6 +206,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilter, setOrderFilter] = useState<string>('All');
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [deletingGraphicId, setDeletingGraphicId] = useState<string | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
   const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
 
@@ -309,7 +310,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             : `Deleted category "${deletion.category}".`
         );
       } else {
-        onDeleteGraphic(deletion.graphic.id);
+        setDeletingGraphicId(deletion.graphic.id);
+        await onDeleteGraphic(deletion.graphic.id);
         showSaveNotice(`Deleted graphic "${deletion.graphic.name}".`);
       }
       setPendingDeletion(null);
@@ -325,6 +327,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       );
     } finally {
       if (deletion.kind === 'order') setDeletingOrderId(null);
+      else if (deletion.kind === 'graphic') setDeletingGraphicId(null);
       else setDeletingCategory(null);
     }
   };
@@ -576,13 +579,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               : 'Delete Artwork'
         }
         onClose={() => setPendingDeletion(null)}
-        closeDisabled={deletingOrderId !== null || deletingCategory !== null}
+        closeDisabled={deletingOrderId !== null || deletingGraphicId !== null || deletingCategory !== null}
         footer={
           <>
             <button
               type="button"
               onClick={() => setPendingDeletion(null)}
-              disabled={deletingOrderId !== null || deletingCategory !== null}
+              disabled={deletingOrderId !== null || deletingGraphicId !== null || deletingCategory !== null}
               className="rounded-lg border border-neutral-700 px-3.5 py-2 text-xs font-bold text-neutral-300 transition hover:bg-neutral-800 hover:text-white disabled:opacity-50"
             >
               Cancel
@@ -590,13 +593,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <button
               type="button"
               onClick={handleConfirmDeletion}
-              disabled={deletingOrderId !== null || deletingCategory !== null}
+              disabled={deletingOrderId !== null || deletingGraphicId !== null || deletingCategory !== null}
               className="inline-flex items-center gap-2 rounded-lg bg-red-500 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-red-400 disabled:cursor-wait disabled:opacity-60"
             >
-              {(deletingOrderId !== null || deletingCategory !== null) && (
+              {(deletingOrderId !== null || deletingGraphicId !== null || deletingCategory !== null) && (
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
               )}
-              {deletingOrderId !== null || deletingCategory !== null ? 'Deleting...' : 'Delete'}
+              {deletingOrderId !== null || deletingGraphicId !== null || deletingCategory !== null ? 'Deleting...' : 'Delete'}
             </button>
           </>
         }
@@ -1680,10 +1683,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       </button>
                       <button
                         type="button"
+                        disabled={deletingGraphicId === g.id}
                         onClick={() => {
                           setPendingDeletion({ kind: 'graphic', graphic: g });
                         }}
-                        className="rounded p-1 text-neutral-500 transition hover:text-red-400"
+                        className="rounded p-1 text-neutral-500 transition hover:text-red-400 disabled:cursor-wait disabled:opacity-50"
                         title="Delete graphic"
                         aria-label={`Delete graphic ${g.name}`}
                       >

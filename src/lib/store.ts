@@ -618,10 +618,12 @@ class Store {
     this.notify();
   }
 
-  public deleteGraphic(id: string) {
+  public async deleteGraphic(id: string) {
+    if (isSupabaseConfigured && !await deleteGraphicFromSupabase(id)) {
+      throw new Error('Could not delete this graphic from Supabase. Check your admin session and try again.');
+    }
     this.graphics = this.graphics.filter((g) => g.id !== id);
     this.save(STORAGE_KEYS.GRAPHICS, this.graphics);
-    deleteGraphicFromSupabase(id);
     this.notify();
   }
 
