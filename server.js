@@ -1027,15 +1027,41 @@ async function buildPrintShopAttachments(order) {
         ? `TEXT-${placement.textContent || placementIndex + 1}`
         : placement.graphicName || `ARTWORK-${placementIndex + 1}`);
       if (placement.type === 'text') {
-        // Text is artwork too: attach it separately on a transparent background,
-        // so the workshop can use the print file without extracting it from the hoodie mockup.
-        const textPng = await sharp(Buffer.from(buildTextArtworkSvg(placement)), {
-          density: 288, limitInputPixels: 100_000_000,
-        }).png().toBuffer();
+        // Send text specifications as a plain-text production file. This avoids
+        // unreliable font rendering in server-side SVG/PNG conversion and gives
+        // the print shop the exact text and its design settings.
+        const fontLabels = {
+          condensed: 'Condensed / bold display style (selected in the designer)',
+          sans: 'Sans-serif',
+          mono: 'Monospace',
+        };
+        const color = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(placement.textColor || '')
+          ? placement.textColor
+          : '#39FF14';
+        const textSpec = [
+          'SALAPEED — TEXT PRINT SPECIFICATION',
+          '====================================',
+          '',
+          `Text: ${String(placement.textContent ?? '')}`,
+          `Font style: ${fontLabels[placement.textFont] || placement.textFont || 'Not specified'}`,
+          `Font key: ${placement.textFont || 'not specified'}`,
+          `Text/ink color: ${color}`,
+          `Curved text: ${placement.textCurve ? 'Yes' : 'No'}`,
+          `Garment side: ${String(placement.side || 'not specified').toUpperCase()}`,
+          `Placement zone: ${placement.zone || 'not specified'}`,
+          `Position: X ${placement.x ?? 'not specified'}%, Y ${placement.y ?? 'not specified'}%`,
+          `Scale: ${placement.scale ?? 'not specified'}`,
+          `Rotation: ${placement.rotation ?? 'not specified'} degrees`,
+          '',
+          'Production note: Recreate the text using the style and color above. The font key is the website designer style, not a guarantee of a specific installed font file. Confirm the exact font with the customer/Salapeed before production if a font match is critical.',
+          '',
+          `Order: ${order.id}`,
+          `Item: ${itemIndex + 1}`,
+        ].join('\r\n');
         addAttachment(
-          `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${name}.png`,
-          'image/png',
-          textPng
+          `SALAPEED-${orderPart}-ITEM-${itemPart}-TEXT-SPEC-${String(placementIndex + 1).padStart(2, '0')}-${name}.txt`,
+          'text/plain; charset=utf-8',
+          Buffer.from(textSpec, 'utf8')
         );
         continue;
       }
