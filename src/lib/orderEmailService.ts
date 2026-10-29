@@ -195,10 +195,10 @@ export function generatePrintShopPackageEmail(
 ): EmailSimulation {
   const shopEmail = customShopEmail || 'workshop@salapeed.com';
 
-  // Count only artwork files; text placements do not have image attachments.
+  // Text placements are exported as transparent PNG artwork attachments too.
   const totalArtworks = order.items.reduce(
     (acc, it) => acc + (it.placements || []).filter(
-      (placement) => placement.type === 'graphic' || placement.type === 'upload'
+      (placement) => placement.type === 'graphic' || placement.type === 'upload' || placement.type === 'text'
     ).length,
     0
   );
@@ -300,7 +300,7 @@ ${garmentsPlainText}
 
 PRINT FILES ATTACHED:
 --------------------------------------------------
-Front/back reference images and placed artwork as PNG files are attached.
+Front/back reference images and each placed graphic, upload, and text artwork as separate files are attached.
 Review any low-resolution upload flags before printing.
 
 --
@@ -323,7 +323,7 @@ ${order.customerNotes ? `Notes: ${order.customerNotes}\n` : ''}Payment: BenefitP
 GARMENTS TO PRODUCE (${order.items.reduce((a, b) => a + b.qty, 0)} Total):
 ${itemsSummaryShort}
 
-Artwork: ${totalArtworks} placed artwork items; print-ready originals are attached without resizing or format conversion.
+Artwork: ${totalArtworks} placed artwork items; print-ready originals are attached, and text placements are included as transparent PNG artwork files.
 Workshop: Seef, Manama, Kingdom of Bahrain`;
 
   return {
@@ -338,7 +338,7 @@ Workshop: Seef, Manama, Kingdom of Bahrain`;
       order.items.length * 2 +
       order.items.reduce(
         (count, item) =>
-          count + (item.placements || []).filter((placement) => placement.type === 'graphic' || placement.type === 'upload').length,
+          count + (item.placements || []).filter((placement) => placement.type === 'graphic' || placement.type === 'upload' || placement.type === 'text').length,
         0
       ),
     bodyText: printShopBodyText,

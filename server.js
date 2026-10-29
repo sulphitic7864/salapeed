@@ -891,6 +891,41 @@ function safePrintFilename(value) {
   return String(value || 'ARTWORK').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 80);
 }
 
+function escapeXml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;',
+  })[character]);
+}
+
+function buildTextArtworkSvg(placement) {
+  const text = String(placement.textContent || 'Salapeed');
+  const fontSize = 96;
+  const charWidth = fontSize * 0.68;
+  const width = Math.max(240, Math.ceil(text.length * charWidth + 100));
+  const height = placement.textCurve ? 280 : 180;
+  const color = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(placement.textColor || '')
+    ? placement.textColor : '#39FF14';
+  const fontFamily = placement.textFont === 'mono'
+    ? 'monospace'
+    : placement.textFont === 'sans'
+      ? 'Arial, Helvetica, sans-serif'
+      : 'Impact, "Arial Narrow", sans-serif';
+  let textMarkup;
+  if (placement.textCurve && text.length > 1) {
+    const center = (text.length - 1) / 2;
+    const startX = width / 2 - ((text.length - 1) * charWidth) / 2;
+    textMarkup = [...text].map((character, index) => {
+      const offset = index - center;
+      const rotation = offset * 7.5;
+      const y = height / 2 + Math.abs(offset) * Math.abs(offset) * 5;
+      return `<text x="${startX + index * charWidth}" y="${y}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="900" fill="${color}" transform="rotate(${rotation} ${startX + index * charWidth} ${y})">${escapeXml(character)}</text>`;
+    }).join('');
+  } else {
+    textMarkup = `<text x="${width / 2}" y="${height / 2 + fontSize * 0.34}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="900" letter-spacing="5" fill="${color}">${escapeXml(text)}</text>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${textMarkup}</svg>`;
+}
+
 function decodeImageDataUrl(value, filename) {
   const match = typeof value === 'string'
     ? value.match(/^data:(image\/(?:jpeg|png|svg\+xml|webp|gif|avif));(base64),([\s\S]*)$/i)
@@ -988,8 +1023,23 @@ async function buildPrintShopAttachments(order) {
     }
 
     for (const [placementIndex, placement] of (item.placements || []).entries()) {
+      const name = safePrintFilename(placement.type === 'text'
+        ? `TEXT-${placement.textContent || placementIndex + 1}`
+        : placement.graphicName || `ARTWORK-${placementIndex + 1}`);
+      if (placement.type === 'text') {
+        // Text is artwork too: attach it separately on a transparent background,
+        // so the workshop can use the print file without extracting it from the hoodie mockup.
+        const textPng = await sharp(Buffer.from(buildTextArtworkSvg(placement)), {
+          density: 288, limitInputPixels: 100_000_000,
+        }).png().toBuffer();
+        addAttachment(
+          `SALAPEED-${orderPart}-ITEM-${itemPart}-ART-${String(placementIndex + 1).padStart(2, '0')}-${name}.png`,
+          'image/png',
+          textPng
+        );
+        continue;
+      }
       if (placement.type !== 'graphic' && placement.type !== 'upload') continue;
-      const name = safePrintFilename(placement.graphicName || `ARTWORK-${placementIndex + 1}`);
       const source = placement.printReadyUrl || placement.svgContent;
       if (!source) {
         throw new Error(`Print-ready original for "${name}" is missing. The preview was not attached as a substitute.`);
